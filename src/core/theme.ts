@@ -149,13 +149,15 @@ export function generateThemeCSS(): string {
  * each time so styles converge on the real accent, then stops.
  *
  * @param onReady - callback to invoke when the accent should be re-applied
+ * @returns disposer that cancels any pending poll; `onReady` is not called after it
  */
-export function detectAccentWhenReady(onReady: () => void): void {
+export function detectAccentWhenReady(onReady: () => void): () => void {
   const intervalMs = 200;
   const maxAttempts = 25; // ~5s ceiling before giving up (keeps the fallback)
   let attempts = 0;
   let stableCount = 0;
   let last: string | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
   const tick = (): void => {
     attempts += 1;
@@ -170,17 +172,20 @@ export function detectAccentWhenReady(onReady: () => void): void {
     }
 
     if (stableCount >= 2 || attempts >= maxAttempts) return;
-    setTimeout(tick, intervalMs);
+    timer = setTimeout(tick, intervalMs);
   };
 
-  setTimeout(tick, intervalMs);
+  timer = setTimeout(tick, intervalMs);
+  return () => clearTimeout(timer);
 }
 
 /**
  * Setup theme color observer to update when theme changes
  * @param onThemeChange - callback to invoke when theme changes (should refresh styles)
+ * @returns disposer that disconnects the observer, cancels the pending refresh and
+ *   unsubscribes the Logseq theme hooks (when the API hands back an off-handle)
  */
-export function setupThemeObserver(onThemeChange: () => void): void {
+export function setupThemeObserver(onThemeChange: () => void): () => void {
   const doc = getParentDoc();
 
   // One theme switch produces several signals within a few ms (html + body
@@ -197,8 +202,10 @@ export function setupThemeObserver(onThemeChange: () => void): void {
   // theme switch — those don't always flip a watched attribute on html/body, so
   // the MutationObserver below can miss them. Guarded so tests (and any host
   // lacking the hook) don't break.
-  logseq.App?.onThemeChanged?.(schedule);
-  logseq.App?.onThemeModeChanged?.(schedule);
+  const offHooks = [
+    logseq.App?.onThemeChanged?.(schedule),
+    logseq.App?.onThemeModeChanged?.(schedule),
+  ];
 
   // Attributes whose change may flip the accent: `class` (dark/light + skins) and
   // the version's accent attribute (v2 `data-color`), if any. Resolved per
@@ -220,4 +227,10 @@ export function setupThemeObserver(onThemeChange: () => void): void {
 
   observer.observe(doc.documentElement, { attributes: true });
   observer.observe(doc.body, { attributes: true });
+
+  return () => {
+    observer.disconnect();
+    clearTimeout(pending);
+    for (const off of offHooks) if (typeof off === 'function') off();
+  };
 }

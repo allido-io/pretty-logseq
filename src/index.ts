@@ -141,6 +141,22 @@ async function applyBinding(binding: FeatureBinding, settings: PluginSettings): 
   refreshStyles();
 }
 
+/** Disposers for core setup (theme observer, accent poller); see `setupCore`. */
+let disposeCore: () => void = () => {};
+
+function setupCore(): void {
+  disposeCore();
+  const disposeObserver = setupThemeObserver(refreshStyles);
+  // The theme's CSS vars may not be applied yet at cold startup; re-detect the
+  // accent once they settle so we don't get stuck on the default fallback.
+  const disposePoller = detectAccentWhenReady(refreshStyles);
+  disposeCore = () => {
+    disposeObserver();
+    disposePoller();
+    disposeCore = () => {};
+  };
+}
+
 async function handleSettingsChange(
   newSettings: PluginSettings,
   oldSettings: PluginSettings,
@@ -149,8 +165,10 @@ async function handleSettingsChange(
   // reload — re-detect, update the scope attribute, then destroy + re-init all.
   if (newSettings.logseqVersion !== oldSettings.logseqVersion) {
     await registry.destroyAll();
+    disposeCore();
     applyVersionAttribute(await detectVersion());
     registerSchema();
+    setupCore();
     await registry.initializeAll();
     refreshStyles();
     return;
@@ -207,10 +225,7 @@ async function main(): Promise<void> {
   console.log(`[Pretty Logseq] Detected Logseq ${version}`);
 
   injectStyles();
-  setupThemeObserver(refreshStyles);
-  // The theme's CSS vars may not be applied yet at cold startup; re-detect the
-  // accent once they settle so we don't get stuck on the default fallback.
-  detectAccentWhenReady(refreshStyles);
+  setupCore();
 
   await registry.initializeAll();
 
@@ -237,6 +252,7 @@ logseq.beforeunload(async () => {
   // changes queued behind it. The chain never rejects, so this cannot throw.
   unloading = true;
   await pendingSettingsChange;
+  disposeCore();
   await registry.destroyAll();
 });
 

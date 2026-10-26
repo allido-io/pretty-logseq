@@ -1,14 +1,5 @@
 // Modern typography with Inter variable font, refined rendering, and prose rhythm.
 
-// Typography weight scale (Inter variable font)
-:root {
-  --pl-font-weight-normal: 400;
-  --pl-font-weight-medium: 450;
-  --pl-font-weight-semibold: 550;
-  --pl-font-weight-bold: 650;
-  --pl-font-weight-heavy: 700;
-}
-
 // Global text rendering + Inter font stack
 #app-container {
   font-family: "Inter", inherit;

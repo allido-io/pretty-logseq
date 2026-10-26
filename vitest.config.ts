@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     globals: true,
+    // Let tests read SCSS sources via `?raw` (Vitest blanks stylesheets by default).
+    css: { include: [/\.scss\?raw$/] },
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
     coverage: {

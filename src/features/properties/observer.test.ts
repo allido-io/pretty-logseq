@@ -237,6 +237,49 @@ describe('Property Observer', () => {
       expect(document.querySelector(`[${RESOLVED_ATTR}]`)).toBeNull();
     });
 
+    it('does not prepend an icon when a pending lookup resolves after cleanup', async () => {
+      let resolveLookup: (v: unknown) => void = () => {};
+      vi.mocked(getPageData).mockReturnValue(
+        new Promise(r => {
+          resolveLookup = r;
+        }) as ReturnType<typeof getPageData>,
+      );
+      vi.mocked(apiModule.cleanPropertyValue).mockReturnValue('📦');
+
+      createPropertyBlock(['type']);
+
+      const cleanup = setupPropertyObserver();
+      cleanup();
+
+      resolveLookup({ properties: { icon: '📦' } });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(document.querySelector(`.${ICON_CLASS}`)).toBeNull();
+    });
+
+    it('does not double-prepend when re-setup happens while a lookup is pending', async () => {
+      const resolvers: Array<(v: unknown) => void> = [];
+      vi.mocked(getPageData).mockImplementation(
+        () =>
+          new Promise(r => {
+            resolvers.push(r);
+          }) as ReturnType<typeof getPageData>,
+      );
+      vi.mocked(apiModule.cleanPropertyValue).mockReturnValue('📦');
+
+      createPropertyBlock(['type']);
+
+      const cleanupOld = setupPropertyObserver();
+      cleanupOld();
+      const cleanupNew = setupPropertyObserver();
+
+      for (const r of resolvers) r({ properties: { icon: '📦' } });
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(document.querySelectorAll(`.${ICON_CLASS}`).length).toBe(1);
+      cleanupNew();
+    });
+
     it('disconnects mutation observer', async () => {
       vi.mocked(getPageData).mockResolvedValue({
         properties: { icon: '🔧' },

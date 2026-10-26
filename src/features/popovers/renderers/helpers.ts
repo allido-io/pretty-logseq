@@ -151,7 +151,7 @@ export function createDetailRow(label: string, valueEl: HTMLElement): HTMLElemen
  * rating → star display, everything else → plain text.
  */
 export function renderPropertyValue(key: string, value: unknown): HTMLElement {
-  const cleaned = cleanPropertyValue(value);
+  const cleaned = cleanAllValues(value).join(', ');
 
   switch (key) {
     case 'rating':

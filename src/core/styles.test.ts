@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { partialMock } from '../../test/mocks/logseq';
 import { injectStyles, refreshStyles } from './styles';
 
 // Mock dependencies
@@ -34,7 +35,7 @@ describe('Style Management', () => {
     it('includes base component styles', () => {
       injectStyles();
 
-      const call = logseq.provideStyle.mock.calls[0][0];
+      const call = partialMock(logseq.provideStyle).mock.calls[0][0];
       const styles = call.style as string;
 
       // Should always include theme and feature styles
@@ -49,7 +50,7 @@ describe('Style Management', () => {
 
       expect(generateThemeCSS).toHaveBeenCalled();
 
-      const call = logseq.provideStyle.mock.calls[0][0];
+      const call = partialMock(logseq.provideStyle).mock.calls[0][0];
       const styles = call.style as string;
       expect(styles).toContain('/* theme styles */');
     });
@@ -61,7 +62,7 @@ describe('Style Management', () => {
 
       expect(registry.getAggregatedStyles).toHaveBeenCalled();
 
-      const call = logseq.provideStyle.mock.calls[0][0];
+      const call = partialMock(logseq.provideStyle).mock.calls[0][0];
       const styles = call.style as string;
       expect(styles).toContain('/* feature styles */');
     });
@@ -85,14 +86,14 @@ describe('Style Management', () => {
     it('uses consistent style key', () => {
       injectStyles();
 
-      const call = logseq.provideStyle.mock.calls[0][0];
+      const call = partialMock(logseq.provideStyle).mock.calls[0][0];
       expect(call.key).toBe('pretty-logseq-styles');
     });
 
     it('includes all style sections in output', () => {
       injectStyles();
 
-      const call = logseq.provideStyle.mock.calls[0][0];
+      const call = partialMock(logseq.provideStyle).mock.calls[0][0];
       const styles = call.style as string;
 
       // Aggregated output includes theme CSS and feature styles
@@ -114,10 +115,10 @@ describe('Style Management', () => {
 
     it('uses same style key on refresh', () => {
       injectStyles();
-      const firstCall = logseq.provideStyle.mock.calls[0][0];
+      const firstCall = partialMock(logseq.provideStyle).mock.calls[0][0];
 
       refreshStyles();
-      const secondCall = logseq.provideStyle.mock.calls[1][0];
+      const secondCall = partialMock(logseq.provideStyle).mock.calls[1][0];
 
       expect(firstCall.key).toBe(secondCall.key);
       expect(firstCall.key).toBe('pretty-logseq-styles');

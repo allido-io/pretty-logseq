@@ -27,8 +27,8 @@ import { v2Platform } from './v2';
 describe('v2Platform', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.App.invokeExternalCommand.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    vi.mocked(logseq.App.invokeExternalCommand).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -61,8 +61,8 @@ describe('v2Platform', () => {
   describe('api data adapter', () => {
     it('routes getPageData through the v2 adapter', async () => {
       getPageV2.mockResolvedValue({ name: 'page' });
-      const result = await v2Platform.api.getPageData('Page', { includeChildren: true });
-      expect(getPageV2).toHaveBeenCalledWith('Page', { includeChildren: true });
+      const result = await v2Platform.api.getPageData('Page', { useCache: false });
+      expect(getPageV2).toHaveBeenCalledWith('Page', { useCache: false });
       expect(result).toEqual({ name: 'page' });
     });
 
@@ -76,7 +76,7 @@ describe('v2Platform', () => {
 
   describe('getFavorites', () => {
     it('normalizes DB page entities to their names', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue([
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
         { name: 'alpha' },
         { originalName: 'Beta' },
         { title: 'Gamma' },
@@ -86,7 +86,7 @@ describe('v2Platform', () => {
     });
 
     it('prefers name over originalName/title', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue([
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
         { name: 'primary', originalName: 'secondary', title: 'tertiary' },
       ] as unknown as string[]);
 
@@ -94,12 +94,12 @@ describe('v2Platform', () => {
     });
 
     it('passes through plain string entries', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(['plain'] as string[]);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['plain'] as string[]);
       expect(await v2Platform.api.getFavorites()).toEqual(['plain']);
     });
 
     it('drops entries with no resolvable name', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue([
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
         { name: 'keep' },
         {},
         { uuid: 'no-name-field' },
@@ -112,7 +112,9 @@ describe('v2Platform', () => {
     });
 
     it('returns an empty array when the API returns a non-array', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(undefined as unknown as string[]);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(
+        undefined as unknown as string[],
+      );
       expect(await v2Platform.api.getFavorites()).toEqual([]);
     });
   });

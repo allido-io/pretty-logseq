@@ -9,12 +9,13 @@
  * string[]` values.
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { partialMock } from '../../test/mocks/logseq';
 import { clearPageCacheV2, getPageBlocksV2, getPageV2, normalizeProperties } from './api.v2';
 
 /** Mock the `:block/title` resolution query with an id → title table. */
 function mockRefTitles(table: Record<number, string>): void {
-  logseq.DB.datascriptQuery.mockImplementation(async (_query: string, input: string) => {
+  vi.mocked(logseq.DB.datascriptQuery).mockImplementation(async (_query: string, input: string) => {
     const ids = (input.match(/\d+/g) ?? []).map(Number);
     return ids.filter(id => id in table).map(id => [id, table[id]]);
   });
@@ -22,8 +23,8 @@ function mockRefTitles(table: Record<number, string>): void {
 
 describe('normalizeProperties', () => {
   beforeEach(() => {
-    logseq.DB.datascriptQuery.mockReset();
-    logseq.DB.datascriptQuery.mockResolvedValue([]);
+    vi.mocked(logseq.DB.datascriptQuery).mockReset();
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([]);
   });
 
   it('strips the namespace and the 8-char id suffix, lowercasing the key', async () => {
@@ -184,7 +185,7 @@ describe('normalizeProperties', () => {
   });
 
   it('drops references when the resolution query returns null', async () => {
-    logseq.DB.datascriptQuery.mockResolvedValue(null);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue(null);
 
     const props = await normalizeProperties({ ':user.property/owner-xEJFd0zo': 1927 });
 
@@ -192,7 +193,7 @@ describe('normalizeProperties', () => {
   });
 
   it('drops references when the resolution query throws', async () => {
-    logseq.DB.datascriptQuery.mockRejectedValue(new Error('query boom'));
+    vi.mocked(logseq.DB.datascriptQuery).mockRejectedValue(new Error('query boom'));
 
     const props = await normalizeProperties({ ':user.property/owner-xEJFd0zo': 1927 });
 
@@ -203,8 +204,8 @@ describe('normalizeProperties', () => {
 describe('getPageV2', () => {
   beforeEach(() => {
     clearPageCacheV2();
-    logseq.DB.datascriptQuery.mockReset();
-    logseq.DB.datascriptQuery.mockResolvedValue([]);
+    vi.mocked(logseq.DB.datascriptQuery).mockReset();
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([]);
   });
 
   it('fetches a DB page and produces the rich, normalized property map', async () => {
@@ -216,7 +217,7 @@ describe('getPageV2', () => {
       1926: '[[Personal]]',
       1927: '[[David Meents]]',
     });
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       id: 1105,
       name: 'poe2-overlord',
       title: 'poe2-overlord',
@@ -246,7 +247,10 @@ describe('getPageV2', () => {
   });
 
   it('resolves the display name from the title attribute', async () => {
-    logseq.Editor.getPage.mockResolvedValue({ name: 'david meents', title: 'David Meents' });
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
+      name: 'david meents',
+      title: 'David Meents',
+    });
 
     const result = await getPageV2('david meents');
 
@@ -254,7 +258,7 @@ describe('getPageV2', () => {
   });
 
   it('prefers the v2 `block/title` over the other name shapes', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       'block/title': 'DB Title',
       title: 'old title',
       name: 'db-title',
@@ -266,7 +270,7 @@ describe('getPageV2', () => {
   });
 
   it('falls back to the requested page name when the entity has no name fields', async () => {
-    logseq.Editor.getPage.mockResolvedValue({ id: 5 });
+    partialMock(logseq.Editor.getPage).mockResolvedValue({ id: 5 });
 
     const result = await getPageV2('My Page');
 
@@ -275,7 +279,7 @@ describe('getPageV2', () => {
   });
 
   it('caches within the TTL', async () => {
-    logseq.Editor.getPage.mockResolvedValue({ title: 'Page' });
+    partialMock(logseq.Editor.getPage).mockResolvedValue({ title: 'Page' });
 
     await getPageV2('page');
     await getPageV2('page');
@@ -284,7 +288,7 @@ describe('getPageV2', () => {
   });
 
   it('bypasses the cache when useCache is false', async () => {
-    logseq.Editor.getPage.mockResolvedValue({ title: 'Page' });
+    partialMock(logseq.Editor.getPage).mockResolvedValue({ title: 'Page' });
 
     await getPageV2('page');
     await getPageV2('page', { useCache: false });
@@ -293,7 +297,7 @@ describe('getPageV2', () => {
   });
 
   it('uses case-insensitive cache keys', async () => {
-    logseq.Editor.getPage.mockResolvedValue({ title: 'Page' });
+    partialMock(logseq.Editor.getPage).mockResolvedValue({ title: 'Page' });
 
     await getPageV2('Page');
     await getPageV2('page');
@@ -303,13 +307,13 @@ describe('getPageV2', () => {
   });
 
   it('returns null when the page does not exist', async () => {
-    logseq.Editor.getPage.mockResolvedValue(null);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(null);
 
     expect(await getPageV2('missing')).toBeNull();
   });
 
   it('returns null on error', async () => {
-    logseq.Editor.getPage.mockRejectedValue(new Error('boom'));
+    partialMock(logseq.Editor.getPage).mockRejectedValue(new Error('boom'));
 
     expect(await getPageV2('boom')).toBeNull();
   });
@@ -317,8 +321,8 @@ describe('getPageV2', () => {
 
 describe('clearPageCacheV2', () => {
   beforeEach(() => {
-    logseq.Editor.getPage.mockResolvedValue({ title: 'Page' });
-    logseq.DB.datascriptQuery.mockResolvedValue([]);
+    partialMock(logseq.Editor.getPage).mockResolvedValue({ title: 'Page' });
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([]);
   });
 
   it('clears a specific page', async () => {
@@ -336,20 +340,20 @@ describe('clearPageCacheV2', () => {
   it('clears the entire cache when no page is specified', async () => {
     await getPageV2('page1');
     await getPageV2('page2');
-    const calls = logseq.Editor.getPage.mock.calls.length;
+    const calls = partialMock(logseq.Editor.getPage).mock.calls.length;
 
     clearPageCacheV2();
 
     await getPageV2('page1');
     await getPageV2('page2');
 
-    expect(logseq.Editor.getPage.mock.calls.length).toBe(calls + 2);
+    expect(partialMock(logseq.Editor.getPage).mock.calls.length).toBe(calls + 2);
   });
 });
 
 describe('getPageBlocksV2', () => {
   it('maps the block tree (delegating to the shared mapper)', async () => {
-    logseq.Editor.getPageBlocksTree.mockResolvedValue([
+    partialMock(logseq.Editor.getPageBlocksTree).mockResolvedValue([
       { content: 'Parent', children: [{ content: 'Child', children: [] }] },
     ]);
 

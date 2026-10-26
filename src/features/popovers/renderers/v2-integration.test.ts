@@ -6,7 +6,8 @@
  * v2 showed before the adapter existed).
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { partialMock } from '../../../../test/mocks/logseq';
 import { clearPageCacheV2, getPageV2 } from '../../../lib/api.v2';
 import { renderPopover } from './unified';
 
@@ -24,11 +25,11 @@ const REF_TITLES: Record<number, string> = {
 describe('v2 popover pipeline (getPageV2 → renderPopover)', () => {
   beforeEach(() => {
     clearPageCacheV2();
-    logseq.DB.datascriptQuery.mockImplementation(async (_q: string, input: string) => {
+    vi.mocked(logseq.DB.datascriptQuery).mockImplementation(async (_q: string, input: string) => {
       const ids = (input.match(/\d+/g) ?? []).map(Number);
       return ids.filter(id => id in REF_TITLES).map(id => [id, REF_TITLES[id]]);
     });
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       id: 1105,
       name: 'poe2-overlord',
       title: 'poe2-overlord',

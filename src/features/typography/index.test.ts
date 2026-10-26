@@ -13,7 +13,7 @@ const mockHead = { appendChild: vi.fn() };
 const mockDocument = {
   head: mockHead,
   createElement: vi.fn(() => ({ ...mockLinkElement })),
-  getElementById: vi.fn(() => null),
+  getElementById: vi.fn((): unknown => null),
 };
 
 vi.mock('../../lib/dom', () => ({

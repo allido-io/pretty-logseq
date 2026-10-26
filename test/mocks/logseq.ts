@@ -4,7 +4,7 @@
  * Mock implementations of the Logseq Plugin API for testing.
  */
 
-import { vi } from 'vitest';
+import { type Mock, vi } from 'vitest';
 import type { PageData } from '../../src/types';
 
 export function mockLogseqAPI() {
@@ -65,4 +65,13 @@ export function mockPageWithProperties(properties: Record<string, unknown>): Pag
   return mockPageData({
     properties,
   });
+}
+
+/**
+ * Handle on a mocked Logseq API method whose real signature demands full
+ * entities (PageEntity, BlockEntity, AppUserConfigs). Tests feed partial
+ * fixtures, so the mock's value type is deliberately loose.
+ */
+export function partialMock(fn: unknown) {
+  return fn as Mock;
 }

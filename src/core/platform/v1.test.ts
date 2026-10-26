@@ -31,8 +31,8 @@ describe('v1Platform', () => {
   describe('api data adapter', () => {
     it('routes getPageData through lib/api getPage', async () => {
       vi.mocked(getPage).mockResolvedValue({ name: 'page' } as Awaited<ReturnType<typeof getPage>>);
-      const result = await v1Platform.api.getPageData('Page', { includeChildren: true });
-      expect(getPage).toHaveBeenCalledWith('Page', { includeChildren: true });
+      const result = await v1Platform.api.getPageData('Page', { useCache: false });
+      expect(getPage).toHaveBeenCalledWith('Page', { useCache: false });
       expect(result).toEqual({ name: 'page' });
     });
 
@@ -45,19 +45,19 @@ describe('v1Platform', () => {
 
   describe('getFavorites', () => {
     it('returns the graph favorites list', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Alpha', 'Beta']);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Alpha', 'Beta']);
       expect(await v1Platform.api.getFavorites()).toEqual(['Alpha', 'Beta']);
     });
 
     it('returns an empty array when the config has none', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(null as unknown as string[]);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(null as unknown as string[]);
       expect(await v1Platform.api.getFavorites()).toEqual([]);
     });
   });
 
   describe('toggleFavorite', () => {
     it('appends the page when favoriting', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Existing']);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Existing']);
 
       await v1Platform.api.toggleFavorite('New Page', true);
 
@@ -67,7 +67,7 @@ describe('v1Platform', () => {
     });
 
     it('removes the page (case-insensitively) when unfavoriting', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Keep', 'Drop Me']);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Keep', 'Drop Me']);
 
       await v1Platform.api.toggleFavorite('drop me', false);
 
@@ -77,7 +77,7 @@ describe('v1Platform', () => {
     });
 
     it('starts from an empty list when the config has no favorites', async () => {
-      logseq.App.getCurrentGraphFavorites.mockResolvedValue(null as unknown as string[]);
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(null as unknown as string[]);
 
       await v1Platform.api.toggleFavorite('First', true);
 

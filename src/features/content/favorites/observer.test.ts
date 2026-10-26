@@ -3,17 +3,21 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { partialMock } from '../../../../test/mocks/logseq';
 import { setVersionForTest } from '../../../core/version';
 import * as favoritesApi from './api';
 import { clearFavoritesCache, refreshFavorites } from './api';
 import { cleanupFavoriteObserver, setupFavoriteObserver } from './observer';
 
+type RouteChangedHandler = Parameters<typeof logseq.App.onRouteChanged>[0];
+const routeEvent = { path: '/page/test', template: '/page/:name' };
+
 describe('setupFavoriteObserver', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     clearFavoritesCache();
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.Editor.getCurrentPage.mockResolvedValue({
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    partialMock(logseq.Editor.getCurrentPage).mockResolvedValue({
       name: 'test-page',
       originalName: 'Test Page',
     });
@@ -98,7 +102,7 @@ describe('setupFavoriteObserver', () => {
 
   it('sets initial star state based on favorites cache', async () => {
     // Set up favorites before observer
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['test-page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['test-page']);
     await refreshFavorites();
 
     const container = createContainer();
@@ -118,8 +122,8 @@ describe('setupFavoriteObserver', () => {
 
   it('toggles star state on click', async () => {
     await refreshFavorites();
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     const container = createContainer();
     const title = createTitleElement();
@@ -183,7 +187,7 @@ describe('setupFavoriteObserver', () => {
     const star = title.querySelector('.pl-favorite-star') as HTMLButtonElement;
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     // The underlying write reads the graph favorites; make that reject.
-    logseq.App.getCurrentGraphFavorites.mockRejectedValue(new Error('boom'));
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockRejectedValue(new Error('boom'));
 
     expect(() => star.click()).not.toThrow();
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -198,8 +202,8 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('logs when the favorites refresh on a route change fails', async () => {
-    let routeCallback: (() => void) | null = null;
-    logseq.App.onRouteChanged.mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -217,7 +221,7 @@ describe('setupFavoriteObserver', () => {
     const refreshSpy = vi
       .spyOn(favoritesApi, 'refreshFavorites')
       .mockRejectedValue(new Error('refresh failed'));
-    routeCallback?.();
+    routeCallback?.(routeEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(errorSpy).toHaveBeenCalledWith(
@@ -231,7 +235,7 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('falls back to originalName when the current page has no name', async () => {
-    logseq.Editor.getCurrentPage.mockResolvedValue({
+    partialMock(logseq.Editor.getCurrentPage).mockResolvedValue({
       originalName: 'Original Only',
     } as Awaited<ReturnType<typeof logseq.Editor.getCurrentPage>>);
 
@@ -251,7 +255,7 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('handles getCurrentPage errors gracefully', async () => {
-    logseq.Editor.getCurrentPage.mockRejectedValue(new Error('No page'));
+    partialMock(logseq.Editor.getCurrentPage).mockRejectedValue(new Error('No page'));
 
     const container = createContainer();
     const title = createTitleElement();
@@ -269,7 +273,7 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('handles null currentPage gracefully', async () => {
-    logseq.Editor.getCurrentPage.mockResolvedValue(null);
+    partialMock(logseq.Editor.getCurrentPage).mockResolvedValue(null);
 
     const container = createContainer();
     const title = createTitleElement();
@@ -295,8 +299,8 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('refreshes favorites on route change', async () => {
-    let routeCallback: (() => void) | null = null;
-    logseq.App.onRouteChanged.mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -305,8 +309,8 @@ describe('setupFavoriteObserver', () => {
     expect(routeCallback).not.toBeNull();
 
     // Trigger route change
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['new-favorites']);
-    routeCallback?.();
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['new-favorites']);
+    routeCallback?.(routeEvent);
 
     await new Promise(resolve => setTimeout(resolve, 150)); // Wait for route change delay
 
@@ -328,7 +332,7 @@ describe('setupFavoriteObserver', () => {
     document.body.appendChild(container);
 
     let scanCount = 0;
-    logseq.Editor.getCurrentPage.mockImplementation(async () => {
+    partialMock(logseq.Editor.getCurrentPage).mockImplementation(async () => {
       scanCount++;
       return {
         name: 'test-page',
@@ -364,8 +368,8 @@ describe('setupFavoriteObserver (v2)', () => {
     document.body.innerHTML = '';
     clearFavoritesCache();
     setVersionForTest('v2');
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.Editor.getCurrentPage.mockResolvedValue({
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    partialMock(logseq.Editor.getCurrentPage).mockResolvedValue({
       name: 'test-page',
       originalName: 'Test Page',
     });
@@ -467,8 +471,8 @@ describe('setupFavoriteObserver (v2)', () => {
   });
 
   it('re-injects the star on the next scan if the title block drops it', async () => {
-    let routeCallback: (() => void) | null = null;
-    logseq.App.onRouteChanged.mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -482,7 +486,7 @@ describe('setupFavoriteObserver (v2)', () => {
     // Simulate a React re-render wiping the in-block star; the next scan (driven
     // here by a route change) must restore it despite the marker still being set.
     wrapper.querySelector('.pl-favorite-star')?.remove();
-    routeCallback?.();
+    routeCallback?.(routeEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(wrapper.querySelector('.pl-favorite-star')).not.toBeNull();
@@ -504,8 +508,8 @@ describe('setupFavoriteObserver (v2)', () => {
 
   it('re-syncs a star to active after the favorites cache refreshes on route change', async () => {
     // Capture the route-change callback so we can drive it.
-    let routeCallback: (() => void) | null = null;
-    logseq.App.onRouteChanged.mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -513,7 +517,7 @@ describe('setupFavoriteObserver (v2)', () => {
     const { row } = createV2Title();
 
     // Cache is empty when the star is first injected → it starts inactive.
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
     setupFavoriteObserver();
     await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -522,10 +526,10 @@ describe('setupFavoriteObserver (v2)', () => {
 
     // The page is in fact favorited (DB returns entities); a route change refresh
     // must flip the already-injected star to active.
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
       { name: 'test-page', originalName: 'Test Page', uuid: 'uuid-1' },
     ] as unknown as string[]);
-    routeCallback?.();
+    routeCallback?.(routeEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(star.classList.contains('pl-favorite-star--active')).toBe(true);
@@ -550,7 +554,7 @@ describe('setupFavoriteObserver (v2)', () => {
 describe('cleanupFavoriteObserver', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
-    logseq.Editor.getCurrentPage.mockResolvedValue({
+    partialMock(logseq.Editor.getCurrentPage).mockResolvedValue({
       name: 'test-page',
       originalName: 'Test Page',
     });
@@ -641,7 +645,7 @@ describe('cleanupFavoriteObserver', () => {
 
   it('unsubscribes from route changes', () => {
     const unsubscribe = vi.fn();
-    logseq.App.onRouteChanged.mockReturnValue(unsubscribe);
+    vi.mocked(logseq.App.onRouteChanged).mockReturnValue(unsubscribe);
 
     setupFavoriteObserver();
     cleanupFavoriteObserver();

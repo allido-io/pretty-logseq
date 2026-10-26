@@ -42,7 +42,7 @@ sandbox and has access to:
 Instead, report vulnerabilities privately via one of:
 
 1. **GitHub Security Advisories**: Use the "Report a vulnerability" button on the
-   [Security tab](https://github.com/dmeents/pretty-logseq/security/advisories)
+   [Security tab](https://github.com/allido-io/pretty-logseq/security/advisories)
 2. **Email**: Contact the maintainer directly at the email listed on the GitHub
    profile
 

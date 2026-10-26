@@ -4,6 +4,9 @@
 # CI, release, and Dependabot workflows
 /.github/ @dmeents
 
+# Decides which PRs can auto-merge
+/scripts/ci/ @dmeents
+
 # Dependencies bundled into the plugin
 /package.json @dmeents
 /pnpm-lock.yaml @dmeents

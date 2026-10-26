@@ -65,7 +65,7 @@ describe('Property Observer', () => {
 
     // Wait for async getPage to resolve
     await vi.waitFor(() => {
-      expect(getPageData).toHaveBeenCalledWith('type');
+      expect(getPageData).toHaveBeenCalledWith('type', { throwOnError: true });
     });
 
     cleanup();
@@ -176,6 +176,7 @@ describe('Property Observer', () => {
         expect.any(Error),
       );
     });
+    expect(getPageData).toHaveBeenCalledWith('status', { throwOnError: true });
     expect(keyEl?.hasAttribute(RESOLVED_ATTR)).toBe(false);
 
     vi.mocked(getPageData).mockResolvedValue({
@@ -186,6 +187,34 @@ describe('Property Observer', () => {
     await vi.waitFor(() => {
       expect(block.querySelector(`.${ICON_CLASS}`)?.textContent).toBe('📦');
     });
+
+    cleanup();
+  });
+
+  it('stops retrying a key after repeated lookup failures', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getPageData).mockRejectedValue(new Error('query failed'));
+
+    const block = createPropertyBlock(['broken']);
+    const keyEl = block.querySelector('.page-property-key');
+
+    const cleanup = setupPropertyObserver();
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await vi.waitFor(() => {
+        expect(getPageData).toHaveBeenCalledTimes(attempt);
+      });
+      document.body.appendChild(document.createElement('div'));
+    }
+
+    // Third failure leaves the key resolved, so further scans skip it.
+    await vi.waitFor(() => {
+      expect(keyEl?.hasAttribute(RESOLVED_ATTR)).toBe(true);
+    });
+    document.body.appendChild(document.createElement('div'));
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => setTimeout(r, 10));
+    expect(getPageData).toHaveBeenCalledTimes(3);
 
     cleanup();
   });

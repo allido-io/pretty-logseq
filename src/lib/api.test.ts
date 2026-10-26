@@ -85,6 +85,25 @@ describe('getPage', () => {
     expect(result).toBeNull();
   });
 
+  it('rethrows API errors when throwOnError is set, without caching', async () => {
+    const error = new Error('API Error');
+    partialMock(logseq.Editor.getPage).mockRejectedValueOnce(error);
+
+    await expect(getPage('error-page', { throwOnError: true })).rejects.toBe(error);
+
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
+      name: 'error-page',
+      properties: { icon: '📦' },
+    });
+    expect((await getPage('error-page', { throwOnError: true }))?.properties.icon).toBe('📦');
+  });
+
+  it('still returns null for a missing page when throwOnError is set', async () => {
+    partialMock(logseq.Editor.getPage).mockResolvedValue(null);
+
+    expect(await getPage('non-existent', { throwOnError: true })).toBeNull();
+  });
+
   it('uses originalName when available', async () => {
     const mockPage = {
       name: 'lower-case',

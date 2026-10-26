@@ -317,6 +317,19 @@ describe('getPageV2', () => {
 
     expect(await getPageV2('boom')).toBeNull();
   });
+
+  it('rethrows errors when throwOnError is set', async () => {
+    const error = new Error('boom');
+    partialMock(logseq.Editor.getPage).mockRejectedValue(error);
+
+    await expect(getPageV2('boom', { throwOnError: true })).rejects.toBe(error);
+  });
+
+  it('still returns null for a missing page when throwOnError is set', async () => {
+    partialMock(logseq.Editor.getPage).mockResolvedValue(null);
+
+    expect(await getPageV2('missing', { throwOnError: true })).toBeNull();
+  });
 });
 
 describe('clearPageCacheV2', () => {

@@ -6,9 +6,9 @@ const pageCache = new TtlCache<PageData>(CACHE_TTL);
 
 export async function getPage(
   pageName: string,
-  options: { useCache?: boolean } = {},
+  options: { useCache?: boolean; throwOnError?: boolean } = {},
 ): Promise<PageData | null> {
-  const { useCache = true } = options;
+  const { useCache = true, throwOnError = false } = options;
   const cacheKey = pageName.toLowerCase();
 
   if (useCache) {
@@ -38,6 +38,7 @@ export async function getPage(
     pageCache.set(cacheKey, pageData);
     return pageData;
   } catch (err) {
+    if (throwOnError) throw err;
     console.error(`[Pretty Logseq] Failed to fetch page "${pageName}":`, err);
     return null;
   }

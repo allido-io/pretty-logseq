@@ -1,9 +1,14 @@
 import { getObserverRoot, getPlatform } from '../../core/platform';
 import { cleanPropertyValue } from '../../lib/api';
 import { getParentDoc } from '../../lib/dom';
+import type { PageData } from '../../types';
 
 const ICON_CLASS = 'pl-property-icon';
 const RESOLVED_ATTR = 'data-pl-icon-resolved';
+// Scans run on every DOM mutation (i.e. per keystroke), so a lookup that keeps
+// failing is retried a few times, then left resolved instead of re-queried forever.
+const MAX_LOOKUP_ATTEMPTS = 3;
+const failedLookups = new Map<string, number>();
 
 async function processPropertyKey(keyEl: Element): Promise<void> {
   if (keyEl.hasAttribute(RESOLVED_ATTR)) return;
@@ -12,12 +17,14 @@ async function processPropertyKey(keyEl: Element): Promise<void> {
   const keyName = keyEl.textContent?.trim();
   if (!keyName) return;
 
-  let page: Awaited<ReturnType<ReturnType<typeof getPlatform>['api']['getPageData']>>;
+  let page: PageData | null;
   try {
-    page = await getPlatform().api.getPageData(keyName);
+    page = await getPlatform().api.getPageData(keyName, { throwOnError: true });
   } catch (err) {
     // Unmark so a later scan retries; a null result (no such page) stays marked.
-    keyEl.removeAttribute(RESOLVED_ATTR);
+    const attempts = (failedLookups.get(keyName) ?? 0) + 1;
+    failedLookups.set(keyName, attempts);
+    if (attempts < MAX_LOOKUP_ATTEMPTS) keyEl.removeAttribute(RESOLVED_ATTR);
     console.error(`[Pretty Logseq] Property icon lookup failed for "${keyName}":`, err);
     return;
   }
@@ -41,6 +48,7 @@ function scanProperties(): void {
 }
 
 function cleanupAll(): void {
+  failedLookups.clear();
   const doc = getParentDoc();
   for (const el of doc.querySelectorAll(`.${ICON_CLASS}`)) {
     el.remove();

@@ -28,7 +28,15 @@ export interface PlatformSelectors {
  * version-agnostic.
  */
 export interface PlatformApi {
-  getPageData(name: string, options?: { useCache?: boolean }): Promise<PageData | null>;
+  /**
+   * Resolves to `null` when the page doesn't exist, and also when the lookup
+   * fails, unless `throwOnError` is set — then a failed lookup rejects, so
+   * callers can tell "no page" from "couldn't ask".
+   */
+  getPageData(
+    name: string,
+    options?: { useCache?: boolean; throwOnError?: boolean },
+  ): Promise<PageData | null>;
   getPageBlocks(name: string): Promise<BlockData[]>;
   getFavorites(): Promise<string[]>;
   /**

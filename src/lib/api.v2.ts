@@ -63,9 +63,9 @@ export function clearPageCacheV2(pageName?: string): void {
 
 export async function getPageV2(
   pageName: string,
-  options: { useCache?: boolean } = {},
+  options: { useCache?: boolean; throwOnError?: boolean } = {},
 ): Promise<PageData | null> {
-  const { useCache = true } = options;
+  const { useCache = true, throwOnError = false } = options;
   const cacheKey = pageName.toLowerCase();
 
   if (useCache) {
@@ -84,6 +84,7 @@ export async function getPageV2(
     pageCache.set(cacheKey, pageData);
     return pageData;
   } catch (err) {
+    if (throwOnError) throw err;
     console.error(`[Pretty Logseq] Failed to fetch v2 page "${pageName}":`, err);
     return null;
   }

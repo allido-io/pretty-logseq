@@ -9,11 +9,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/**/*.d.ts',
-        'src/types/**',
-        'src/index.ts', // Bootstrap file
-      ],
+      exclude: ['src/**/*.d.ts', 'src/types/**'],
       thresholds: {
         lines: 20,
         functions: 20,

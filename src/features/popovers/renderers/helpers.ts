@@ -83,10 +83,13 @@ export function cleanAllValues(value: unknown): string[] {
  */
 export function createTitle(pageData: PageData): HTMLElement {
   const { name, properties } = pageData;
+  // Same clean the properties-icon observer applies to this property: Logseq
+  // may hand back `[[x]]`-wrapped or array-valued properties on either edition.
+  const icon = cleanPropertyValue(properties.icon);
 
   const title = document.createElement('a');
   title.className = 'pretty-popover__title';
-  title.textContent = properties.icon ? `${properties.icon} ${name}` : name;
+  title.textContent = icon ? `${icon} ${name}` : name;
   title.dataset.pageName = name;
 
   return title;

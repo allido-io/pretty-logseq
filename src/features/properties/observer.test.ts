@@ -65,7 +65,7 @@ describe('Property Observer', () => {
 
     // Wait for async getPage to resolve
     await vi.waitFor(() => {
-      expect(getPageData).toHaveBeenCalledWith('type');
+      expect(getPageData).toHaveBeenCalledWith('type', { throwOnError: true });
     });
 
     cleanup();
@@ -157,6 +157,159 @@ describe('Property Observer', () => {
     });
 
     expect(block.querySelector(`.${ICON_CLASS}`)).toBeNull();
+
+    cleanup();
+  });
+
+  it('logs a rejected lookup and unmarks the key so a later scan retries it', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getPageData).mockRejectedValueOnce(new Error('api not ready'));
+
+    const block = createPropertyBlock(['status']);
+    const keyEl = block.querySelector('.page-property-key');
+
+    const cleanup = setupPropertyObserver();
+
+    await vi.waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Pretty Logseq]'),
+        expect.any(Error),
+      );
+    });
+    expect(getPageData).toHaveBeenCalledWith('status', { throwOnError: true });
+    expect(keyEl?.hasAttribute(RESOLVED_ATTR)).toBe(false);
+
+    vi.mocked(getPageData).mockResolvedValue({
+      properties: { icon: '📦' },
+    } as Awaited<ReturnType<typeof getPageData>>);
+    document.body.appendChild(document.createElement('div'));
+
+    await vi.waitFor(() => {
+      expect(block.querySelector(`.${ICON_CLASS}`)?.textContent).toBe('📦');
+    });
+
+    cleanup();
+  });
+
+  it('stops retrying a key after repeated lookup failures', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getPageData).mockRejectedValue(new Error('query failed'));
+
+    const block = createPropertyBlock(['broken']);
+    const keyEl = block.querySelector('.page-property-key');
+
+    const cleanup = setupPropertyObserver();
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await vi.waitFor(() => {
+        expect(getPageData).toHaveBeenCalledTimes(attempt);
+      });
+      document.body.appendChild(document.createElement('div'));
+    }
+
+    // Third failure leaves the key resolved, so further scans skip it.
+    await vi.waitFor(() => {
+      expect(keyEl?.hasAttribute(RESOLVED_ATTR)).toBe(true);
+    });
+    document.body.appendChild(document.createElement('div'));
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => setTimeout(r, 10));
+    expect(getPageData).toHaveBeenCalledTimes(3);
+
+    cleanup();
+  });
+
+  it('resets the failure count once a lookup succeeds', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getPageData)
+      .mockRejectedValueOnce(new Error('blip'))
+      .mockRejectedValueOnce(new Error('blip'))
+      .mockResolvedValueOnce(null as Awaited<ReturnType<typeof getPageData>>)
+      .mockRejectedValue(new Error('blip'));
+
+    createPropertyBlock(['status']);
+    const cleanup = setupPropertyObserver();
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await vi.waitFor(() => {
+        expect(getPageData).toHaveBeenCalledTimes(attempt);
+      });
+      document.body.appendChild(document.createElement('div'));
+    }
+
+    // Two old failures + one new one must not exhaust the cap: the new key retries.
+    const later = createPropertyBlock(['status']).querySelector('.page-property-key');
+    await vi.waitFor(() => {
+      expect(getPageData).toHaveBeenCalledTimes(4);
+    });
+    await vi.waitFor(() => {
+      expect(later?.hasAttribute(RESOLVED_ATTR)).toBe(false);
+    });
+    document.body.appendChild(document.createElement('div'));
+    await vi.waitFor(() => {
+      expect(getPageData).toHaveBeenCalledTimes(5);
+    });
+
+    cleanup();
+  });
+
+  it('shares one lookup between keys with the same name, counting a failure once', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getPageData)
+      .mockRejectedValueOnce(new Error('blip'))
+      .mockResolvedValue({
+        properties: { icon: '📦' },
+      } as Awaited<ReturnType<typeof getPageData>>);
+
+    const main = createPropertyBlock(['status']);
+    const sidebar = createPropertyBlock(['status']);
+    const cleanup = setupPropertyObserver();
+
+    await vi.waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(getPageData).toHaveBeenCalledTimes(1);
+
+    document.body.appendChild(document.createElement('div'));
+    await vi.waitFor(() => {
+      expect(main.querySelector(`.${ICON_CLASS}`)?.textContent).toBe('📦');
+      expect(sidebar.querySelector(`.${ICON_CLASS}`)?.textContent).toBe('📦');
+    });
+    expect(getPageData).toHaveBeenCalledTimes(2);
+
+    cleanup();
+  });
+
+  it('does not count a failure that lands after teardown against the next activation', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rejectLate: (err: Error) => void = () => {};
+    vi.mocked(getPageData).mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectLate = reject;
+        }),
+    );
+
+    createPropertyBlock(['status']);
+    const firstCleanup = setupPropertyObserver();
+    await vi.waitFor(() => {
+      expect(getPageData).toHaveBeenCalledTimes(1);
+    });
+
+    firstCleanup();
+    rejectLate(new Error('late'));
+    await new Promise(r => setTimeout(r, 0));
+
+    vi.mocked(getPageData).mockRejectedValue(new Error('blip'));
+    const cleanup = setupPropertyObserver();
+
+    // The re-activated observer still gets its full three attempts.
+    for (let attempt = 2; attempt <= 4; attempt++) {
+      await vi.waitFor(() => {
+        expect(getPageData).toHaveBeenCalledTimes(attempt);
+      });
+      document.body.appendChild(document.createElement('div'));
+    }
 
     cleanup();
   });

@@ -104,26 +104,6 @@ export function positionElement(
   element.style.top = `${adjusted.top}px`;
 }
 
-export function createElement<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  attrs?: Record<string, string>,
-  innerHTML?: string,
-): HTMLElementTagNameMap[K] {
-  const element = document.createElement(tag);
-
-  if (attrs) {
-    for (const [key, value] of Object.entries(attrs)) {
-      element.setAttribute(key, value);
-    }
-  }
-
-  if (innerHTML) {
-    element.innerHTML = innerHTML;
-  }
-
-  return element;
-}
-
 /**
  * Remove an element by ID if it exists.
  * Uses parent.document since plugins run in an iframe.

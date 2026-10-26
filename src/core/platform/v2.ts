@@ -1,5 +1,4 @@
-import { getThemeMode } from '../../lib/api';
-import { clearPageCacheV2, getPageBlocksV2, getPageV2 } from '../../lib/api.v2';
+import { getPageBlocksV2, getPageV2 } from '../../lib/api.v2';
 import type { Platform } from './types';
 import { v1Platform } from './v1';
 
@@ -85,8 +84,6 @@ export const v2Platform: Platform = {
     ...v1Platform.api,
     getPageData: (name, options) => getPageV2(name, options),
     getPageBlocks: name => getPageBlocksV2(name),
-    getThemeMode: () => getThemeMode(),
-    clearPageCache: name => clearPageCacheV2(name),
     // DB returns favorite *entities*, not name strings — normalize to names so the
     // shared name-keyed favorites cache works (v1 already returns strings).
     getFavorites: async () => {

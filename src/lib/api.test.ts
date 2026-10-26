@@ -136,6 +136,35 @@ describe('getPage', () => {
     expect(result?.properties).toEqual({ type: 'Resource', status: 'Active' });
   });
 
+  it('passes the lowercased alias name to the query as an EDN string', async () => {
+    logseq.Editor.getPage.mockResolvedValue({
+      name: 'alias page',
+      originalName: 'Alias Page',
+      properties: {},
+    });
+    logseq.DB.datascriptQuery.mockResolvedValue(null);
+
+    await getPage('Alias Page');
+
+    const [, input] = logseq.DB.datascriptQuery.mock.calls[0];
+    expect(input).toBe('"alias page"');
+  });
+
+  it('escapes quotes and backslashes in the alias name so the EDN string stays well-formed', async () => {
+    logseq.Editor.getPage.mockResolvedValue({
+      name: 'say "hi" c:\\temp',
+      originalName: 'Say "Hi" C:\\Temp',
+      properties: {},
+    });
+    logseq.DB.datascriptQuery.mockResolvedValue(null);
+
+    await getPage('Say "Hi" C:\\Temp');
+
+    const [, input] = logseq.DB.datascriptQuery.mock.calls[0];
+    // JSON string escapes are a subset of EDN string escapes.
+    expect(input).toBe('"say \\"hi\\" c:\\\\temp"');
+  });
+
   it('returns original page when alias resolution finds nothing', async () => {
     logseq.Editor.getPage.mockResolvedValue({
       name: 'no-alias',

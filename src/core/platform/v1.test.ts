@@ -8,11 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../lib/api', () => ({
   getPage: vi.fn(),
   getPageBlocks: vi.fn(),
-  getThemeMode: vi.fn(),
-  clearPageCache: vi.fn(),
 }));
 
-import { clearPageCache, getPage, getPageBlocks, getThemeMode } from '../../lib/api';
+import { getPage, getPageBlocks } from '../../lib/api';
 import { v1Platform } from './v1';
 
 describe('v1Platform', () => {
@@ -42,16 +40,6 @@ describe('v1Platform', () => {
       vi.mocked(getPageBlocks).mockResolvedValue([]);
       await v1Platform.api.getPageBlocks('Page');
       expect(getPageBlocks).toHaveBeenCalledWith('Page');
-    });
-
-    it('routes getThemeMode through lib/api getThemeMode', () => {
-      vi.mocked(getThemeMode).mockReturnValue('light');
-      expect(v1Platform.api.getThemeMode()).toBe('light');
-    });
-
-    it('routes clearPageCache through lib/api clearPageCache', () => {
-      v1Platform.api.clearPageCache('Page');
-      expect(clearPageCache).toHaveBeenCalledWith('Page');
     });
   });
 

@@ -64,10 +64,3 @@ export function mockPageWithProperties(properties: Record<string, unknown>): Pag
     properties,
   });
 }
-
-export function mockBlockData(content: string, children: unknown[] = []) {
-  return {
-    content,
-    children,
-  };
-}

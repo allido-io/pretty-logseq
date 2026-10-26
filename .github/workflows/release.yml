@@ -7,7 +7,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: write
 
 jobs:
   release-please:
@@ -17,21 +16,19 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      # Release PRs opened with GITHUB_TOKEN don't trigger workflows, so use an
+      # org GitHub App token to get the required CI checks on them.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: googleapis/release-please-action@v5
         id: release
         with:
           release-type: node
-
-      # PRs opened with GITHUB_TOKEN don't trigger workflows, so dispatch CI
-      # onto the release branch to report the checks the ruleset requires.
-      - name: Run CI on release PR
-        if: ${{ steps.release.outputs.prs_created == 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh workflow run ci.yml \
-            --repo ${{ github.repository }} \
-            --ref ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          token: ${{ steps.app-token.outputs.token }}
 
   build-and-upload:
     name: Build & Upload Release Artifact

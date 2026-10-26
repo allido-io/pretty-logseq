@@ -95,7 +95,8 @@ async function resolveAlias(aliasName: string): Promise<PageData | null> {
        [?a :block/name ?name]
        [?p :block/alias ?a]]
     `,
-      `"${aliasName.toLowerCase()}"`,
+      // Inputs are read as EDN by Logseq; JSON string escapes are a valid subset.
+      JSON.stringify(aliasName.toLowerCase()),
     );
 
     if (!results?.length) return null;

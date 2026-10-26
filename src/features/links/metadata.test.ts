@@ -3,7 +3,29 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearMetadataCache, fetchMetadata } from './metadata';
+import { clearMetadataCache, createFallbackMetadata, fetchMetadata } from './metadata';
+
+describe('createFallbackMetadata', () => {
+  it('derives the domain from the url and strips a leading www.', () => {
+    const meta = createFallbackMetadata('https://www.example.com/some/path');
+    expect(meta.domain).toBe('example.com');
+    expect(meta.url).toBe('https://www.example.com/some/path');
+    expect(meta.faviconUrl).toBe('https://example.com/favicon.ico');
+  });
+
+  it('leaves title/description/image empty so it renders as a minimal card', () => {
+    const meta = createFallbackMetadata('https://example.com');
+    expect(meta.title).toBeNull();
+    expect(meta.description).toBeNull();
+    expect(meta.image).toBeNull();
+    expect(meta.error).toBeNull();
+  });
+
+  it('falls back to the raw url as the domain when it cannot be parsed', () => {
+    const meta = createFallbackMetadata('not a url');
+    expect(meta.domain).toBe('not a url');
+  });
+});
 
 describe('fetchMetadata', () => {
   beforeEach(() => {

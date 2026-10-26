@@ -7,7 +7,8 @@ import * as metadataModule from './metadata';
 import { setupLinkPopovers } from './popover';
 import type { LinkMetadata } from './types';
 
-vi.mock('./metadata', () => ({
+vi.mock('./metadata', async importOriginal => ({
+  ...(await importOriginal<typeof import('./metadata')>()),
   fetchMetadata: vi.fn(),
 }));
 

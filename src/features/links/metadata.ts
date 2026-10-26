@@ -85,6 +85,29 @@ async function requestHtml(url: string, signal: AbortSignal): Promise<HtmlRespon
   };
 }
 
+/**
+ * Build a minimal, URL-derived metadata object so the popover can render even
+ * when the metadata fetch is blocked (CSP `connect-src` / CORS in v2).
+ */
+export function createFallbackMetadata(url: string): LinkMetadata {
+  let domain = url;
+  try {
+    domain = new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    // Leave `domain` as the raw url if it can't be parsed.
+  }
+  return {
+    url,
+    title: null,
+    description: null,
+    image: null,
+    siteName: null,
+    domain,
+    faviconUrl: getFaviconUrl(domain),
+    error: null,
+  };
+}
+
 export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
   // Check cache
   const cached = metadataCache.get(url);

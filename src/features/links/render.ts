@@ -1,5 +1,5 @@
 import { getParentDoc } from '../../lib/dom';
-import { createFaviconImg, getFaviconUrl } from './favicons';
+import { createFaviconImg } from './favicons';
 import type { LinkMetadata } from './types';
 
 const POPOVER_FAVICON_STYLE = 'width:14px;height:14px;flex-shrink:0;margin:0;padding:0;border:none';
@@ -11,29 +11,6 @@ function createFavicon(src: string): HTMLImageElement {
     className: 'pretty-link-popover__favicon',
     style: POPOVER_FAVICON_STYLE,
   });
-}
-
-/**
- * Build a minimal, URL-derived metadata object so the popover can render even
- * when the metadata fetch is blocked (CSP `connect-src` / CORS in v2).
- */
-export function createFallbackMetadata(url: string): LinkMetadata {
-  let domain = url;
-  try {
-    domain = new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    // Leave `domain` as the raw url if it can't be parsed.
-  }
-  return {
-    url,
-    title: null,
-    description: null,
-    image: null,
-    siteName: null,
-    domain,
-    faviconUrl: getFaviconUrl(domain),
-    error: null,
-  };
 }
 
 /**

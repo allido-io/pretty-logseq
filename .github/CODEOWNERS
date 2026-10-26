@@ -1,0 +1,16 @@
+# Changes to these paths request a review from their owner.
+# Everything else has no code owner.
+
+# CI, release, and Dependabot workflows
+/.github/ @dmeents
+
+# Dependencies bundled into the plugin
+/package.json @dmeents
+/pnpm-lock.yaml @dmeents
+
+# Marketplace listing metadata
+/manifest.json @dmeents
+
+# Agent instructions
+/.claude/ @dmeents
+/CLAUDE.md @dmeents

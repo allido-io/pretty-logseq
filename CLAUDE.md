@@ -394,8 +394,27 @@ Manual testing in Logseq:
 - **Test** — `pnpm test:coverage` (fails below the coverage thresholds in `vitest.config.ts`)
 - **Build** — `pnpm build` (uploads `dist/` artifact)
 
-Releases are handled by `.github/workflows/release.yml`; Dependabot updates are
-auto-merged via `.github/workflows/dependabot-auto-merge.yml`.
+Releases are handled by `.github/workflows/release.yml`: release-please (authenticated with the
+`allido-release` GitHub App) keeps a release PR open, and merging it — always a human's call —
+publishes the release zip users install. PRs are squash-merged, so PR titles must be conventional
+commits; release-please reads them. Dependabot updates are auto-merged via
+`.github/workflows/dependabot-auto-merge.yml`.
+
+## Agent Workflow
+
+Work is tracked in Linear team **PRE**. Project skills in `.claude/skills/` (tracked in git, so
+worktrees have them):
+
+- **`ticket`** — one Linear ticket end to end: claim → worktree → implement → verify → PR → review +
+  CI → squash-merge. A human merges PRs touching `.github/**`, `package.json`, `pnpm-lock.yaml`,
+  `manifest.json`, `.claude/**`, or `CLAUDE.md`; agents never merge a release PR.
+- **`green`** — the finish loop: the three required checks, run locally and reported honestly.
+- **`plan-probe`** — verify DOM, API, and edition assumptions with read-only probes before building.
+- **`scout`** — read-only recon: sweeps GitHub issues and one code Area per tick into PRE `Triage`.
+- **`groom`** — curates the PRE board and promotes clear tickets from `Triage` to `Todo`.
+- **`refactor`** — a deep, behavior-preserving audit-and-refactor of one Area; always human-merged.
+
+`scout` and `groom` use the `code-analyzer` agent in `.claude/agents/`.
 
 ## Related Repository
 

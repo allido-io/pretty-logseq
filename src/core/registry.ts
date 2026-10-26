@@ -30,17 +30,8 @@ export class FeatureRegistry {
   }
 
   async initializeAll(): Promise<void> {
-    for (const [id, registered] of this.features) {
-      if (!registered.initialized) {
-        try {
-          await registered.feature.init();
-          registered.initialized = true;
-          this.initOrder.push(id);
-          console.log(`[Pretty Logseq] Feature "${id}" initialized`);
-        } catch (err) {
-          console.error(`[Pretty Logseq] Failed to initialize feature "${id}":`, err);
-        }
-      }
+    for (const id of this.features.keys()) {
+      await this.initializeFeature(id);
     }
   }
 
@@ -82,18 +73,13 @@ export class FeatureRegistry {
   }
 
   async destroyAll(): Promise<void> {
+    // Tear down in reverse init order. Iterate a copy: destroyFeature prunes
+    // initOrder as it goes.
     for (const id of [...this.initOrder].reverse()) {
-      const registered = this.features.get(id);
-      if (registered?.initialized) {
-        try {
-          registered.feature.destroy();
-          registered.initialized = false;
-          console.log(`[Pretty Logseq] Feature "${id}" destroyed`);
-        } catch (err) {
-          console.error(`[Pretty Logseq] Failed to destroy feature "${id}":`, err);
-        }
-      }
+      this.destroyFeature(id);
     }
+    // A feature whose destroy() threw stays marked initialized but is dropped
+    // from the order, matching the pre-refactor contract.
     this.initOrder = [];
   }
 

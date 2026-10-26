@@ -1,6 +1,6 @@
 ![Pretty Logseq Banner](assets/logos/pretty-logseq-banner-narrow.png)
 
-![version](https://img.shields.io/github/package-json/v/dmeents/pretty-logseq) [![codecov](https://codecov.io/gh/dmeents/pretty-logseq/graph/badge.svg)](https://codecov.io/gh/dmeents/pretty-logseq)
+![version](https://img.shields.io/github/package-json/v/allido-io/pretty-logseq)
 
 # Pretty Logseq
 
@@ -79,9 +79,8 @@ graph.
 
 ## Support
 
-- **Issues & Bug Reports:** [GitHub Issues](https://github.com/dmeents/pretty-logseq/issues)
+- **Issues & Bug Reports:** [GitHub Issues](https://github.com/allido-io/pretty-logseq/issues)
 - **Feature Requests:** Open an issue with your idea
-- **Discussions:** [GitHub Discussions](https://github.com/dmeents/pretty-logseq/discussions)
 
 ## Contributing
 

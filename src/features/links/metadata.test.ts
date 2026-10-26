@@ -246,6 +246,25 @@ describe('fetchMetadata via logseq.Request proxy', () => {
 
     expect(result).toBeNull();
   });
+
+  it.each([
+    ['null', null],
+    ['empty-string', ''],
+  ])('treats a %s proxy body as a failure, not a cached success', async (_label, body) => {
+    const _request = vi.fn().mockResolvedValue(body);
+    (globalThis.logseq as unknown as { Request: { _request: typeof _request } }).Request = {
+      _request,
+    };
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const first = await fetchMetadata('https://example.com/proxy-empty');
+    const second = await fetchMetadata('https://example.com/proxy-empty');
+
+    expect(first).toBeNull();
+    expect(second).toBeNull();
+    // Second call short-circuits on failedUrls instead of re-requesting or serving a cached result.
+    expect(_request).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('clearMetadataCache', () => {

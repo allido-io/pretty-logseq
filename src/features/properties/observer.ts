@@ -35,7 +35,7 @@ function lookupPage(keyName: string): Promise<PageData | null> {
   return lookup;
 }
 
-async function processPropertyKey(keyEl: Element): Promise<void> {
+async function processPropertyKey(keyEl: Element, isLive: () => boolean): Promise<void> {
   if (keyEl.hasAttribute(RESOLVED_ATTR)) return;
   keyEl.setAttribute(RESOLVED_ATTR, '');
 
@@ -51,6 +51,8 @@ async function processPropertyKey(keyEl: Element): Promise<void> {
     keyEl.removeAttribute(RESOLVED_ATTR);
     return;
   }
+  // The observer may have been torn down while the lookup was in flight.
+  if (!isLive()) return;
   if (!page?.properties?.icon) return;
 
   const icon = cleanPropertyValue(page.properties.icon);
@@ -62,11 +64,11 @@ async function processPropertyKey(keyEl: Element): Promise<void> {
   keyEl.prepend(span);
 }
 
-function scanProperties(): void {
+function scanProperties(isLive: () => boolean): void {
   const doc = getParentDoc();
   const keys = doc.querySelectorAll(getPlatform().selectors.propertyKey);
   for (const key of keys) {
-    processPropertyKey(key);
+    processPropertyKey(key, isLive);
   }
 }
 
@@ -82,14 +84,17 @@ function cleanupAll(): void {
 }
 
 export function setupPropertyObserver(): () => void {
-  scanProperties();
+  let live = true;
+  const isLive = () => live;
+
+  scanProperties(isLive);
 
   let rafId: number | null = null;
 
   const observer = new MutationObserver(() => {
     if (rafId === null) {
       rafId = requestAnimationFrame(() => {
-        scanProperties();
+        scanProperties(isLive);
         rafId = null;
       });
     }
@@ -98,6 +103,7 @@ export function setupPropertyObserver(): () => void {
   observer.observe(getObserverRoot(), { childList: true, subtree: true });
 
   return () => {
+    live = false;
     observer.disconnect();
     if (rafId !== null) cancelAnimationFrame(rafId);
     cleanupAll();

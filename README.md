@@ -1,6 +1,6 @@
 ![Pretty Logseq Banner](assets/logos/pretty-logseq-banner-narrow.png)
 
-![version](https://img.shields.io/github/package-json/v/allido-io/pretty-logseq) [![codecov](https://codecov.io/gh/allido-io/pretty-logseq/graph/badge.svg)](https://codecov.io/gh/allido-io/pretty-logseq)
+![version](https://img.shields.io/github/package-json/v/allido-io/pretty-logseq)
 
 # Pretty Logseq
 

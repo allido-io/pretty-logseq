@@ -125,6 +125,17 @@ describe('v2Platform', () => {
       expect(logseq.App.invokeExternalCommand).toHaveBeenCalledWith('logseq.page/toggle-favorite');
     });
 
+    it('still invokes the toggle when the favorites read fails', async () => {
+      vi.mocked(logseq.App.invokeExternalCommand).mockClear();
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockRejectedValueOnce(
+        new Error('read failed'),
+      );
+
+      await v2Platform.api.toggleFavorite('any page', true);
+
+      expect(logseq.App.invokeExternalCommand).toHaveBeenCalledWith('logseq.page/toggle-favorite');
+    });
+
     it('skips the blind toggle when the page is already in the requested state', async () => {
       vi.mocked(logseq.App.invokeExternalCommand).mockClear();
       vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Any Page'] as string[]);

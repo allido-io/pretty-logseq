@@ -41,26 +41,46 @@ async function readFavorited(lowerName: string): Promise<boolean | null> {
 }
 
 /**
+ * In-flight toggle per page (lowercased name). Toggles for the same page run one
+ * after another so each reads the state the previous write left behind; without
+ * this, a fast double-click reads "not favorited" twice and favorites twice.
+ */
+const pendingToggles = new Map<string, Promise<void>>();
+
+/**
  * Toggle favorite status for a page
  */
-export async function toggleFavorite(pageName: string): Promise<void> {
+export function toggleFavorite(pageName: string): Promise<void> {
   const lowerName = pageName.toLowerCase();
-  let wasFavorited = favoritesCache.has(lowerName);
+  const wasCached = favoritesCache.has(lowerName);
 
   // Optimistic update (synchronous, so the star flips immediately)
-  if (wasFavorited) {
-    favoritesCache.delete(lowerName);
-  } else {
-    favoritesCache.add(lowerName);
-  }
+  setCached(lowerName, !wasCached);
 
-  const setCached = (favorited: boolean) => {
-    if (favorited) {
-      favoritesCache.add(lowerName);
-    } else {
-      favoritesCache.delete(lowerName);
-    }
+  const previous = pendingToggles.get(lowerName) ?? Promise.resolve();
+  const run = previous
+    .catch(() => {}) // the previous click's caller already handles its failure
+    .then(() => writeToggle(pageName, lowerName, wasCached));
+
+  const settle = () => {
+    if (pendingToggles.get(lowerName) === run) pendingToggles.delete(lowerName);
   };
+  pendingToggles.set(lowerName, run);
+  run.then(settle, settle);
+
+  return run;
+}
+
+function setCached(lowerName: string, favorited: boolean): void {
+  if (favorited) {
+    favoritesCache.add(lowerName);
+  } else {
+    favoritesCache.delete(lowerName);
+  }
+}
+
+async function writeToggle(pageName: string, lowerName: string, wasCached: boolean): Promise<void> {
+  let wasFavorited = wasCached;
 
   try {
     // The cache can be stale (native favoriting, or a failed refresh emptied it),
@@ -68,7 +88,7 @@ export async function toggleFavorite(pageName: string): Promise<void> {
     const actual = await readFavorited(lowerName);
     if (actual !== null && actual !== wasFavorited) {
       wasFavorited = actual;
-      setCached(!wasFavorited);
+      setCached(lowerName, !wasFavorited);
     }
 
     // The write mechanism is version-specific (v1 rewrites the graph config; v2
@@ -78,7 +98,7 @@ export async function toggleFavorite(pageName: string): Promise<void> {
     console.error('[Pretty Logseq] Failed to toggle favorite:', error);
 
     // Rollback optimistic update
-    setCached(wasFavorited);
+    setCached(lowerName, wasFavorited);
 
     throw error;
   }

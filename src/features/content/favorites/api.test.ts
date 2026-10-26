@@ -355,6 +355,63 @@ describe('toggleFavorite (v2 DB graph)', () => {
   });
 });
 
+describe('toggleFavorite (overlapping clicks)', () => {
+  // A graph whose favorites list reflects every write, so overlapping toggles race
+  // on real state the way they do in Logseq.
+  let store: string[];
+
+  beforeEach(() => {
+    clearFavoritesCache();
+    store = [];
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockImplementation(async () => [...store]);
+  });
+
+  afterEach(() => {
+    setVersionForTest(null);
+  });
+
+  it('v1: a double-click on one page ends back where it started', async () => {
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockImplementation(async configs => {
+      store = (configs as { favorites: string[] }).favorites;
+    });
+
+    await Promise.all([toggleFavorite('Page'), toggleFavorite('Page')]);
+
+    expect(store).toEqual([]);
+    expect(isFavorited('Page')).toBe(false);
+  });
+
+  it('v2: a double-click toggles twice and the star matches the graph', async () => {
+    setVersionForTest('v2');
+    vi.mocked(logseq.App.invokeExternalCommand).mockImplementation(async () => {
+      store = store.length ? [] : ['Page'];
+    });
+
+    await Promise.all([toggleFavorite('Page'), toggleFavorite('Page')]);
+
+    expect(logseq.App.invokeExternalCommand).toHaveBeenCalledTimes(2);
+    expect(store).toEqual([]);
+    expect(isFavorited('Page')).toBe(false);
+  });
+
+  it('a failed click does not block the next click on the same page', async () => {
+    vi.mocked(logseq.App.setCurrentGraphConfigs)
+      .mockRejectedValueOnce(new Error('write failed'))
+      .mockImplementation(async configs => {
+        store = (configs as { favorites: string[] }).favorites;
+      });
+
+    const first = toggleFavorite('Page');
+    const second = toggleFavorite('Page');
+
+    await expect(first).rejects.toThrow('write failed');
+    await second;
+    // First click failed (still unfavorited), so the second click favorites.
+    expect(store).toEqual(['Page']);
+    expect(isFavorited('Page')).toBe(true);
+  });
+});
+
 describe('clearFavoritesCache', () => {
   it('clears the favorites cache', async () => {
     vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Test Page']);

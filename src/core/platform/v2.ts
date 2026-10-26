@@ -96,11 +96,14 @@ export const v2Platform: Platform = {
     // deprecation), so route through the built-in `logseq.page/toggle-favorite`
     // command. It toggles the *current* page — which is exactly the page whose
     // title carries the star. Because it's a blind toggle, check the real state
-    // first and only invoke it when it differs from what the click intends.
+    // first and only invoke it when it differs from what the click intends. If
+    // that read fails, still invoke it rather than dropping the click.
     toggleFavorite: async (pageName, shouldFavorite) => {
       const lower = pageName.toLowerCase();
-      const current = await v2Platform.api.getFavorites();
-      if (current.some(name => name.toLowerCase() === lower) === shouldFavorite) return;
+      const current = await v2Platform.api.getFavorites().catch(() => null);
+      if (current && current.some(name => name.toLowerCase() === lower) === shouldFavorite) {
+        return;
+      }
       await (logseq.App.invokeExternalCommand as (type: string) => Promise<void>)(
         'logseq.page/toggle-favorite',
       );

@@ -1,12 +1,8 @@
 import type { BlockData, PageData, PageProperties } from '../types';
+import { TtlCache } from './cache';
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-const pageCache = new Map<string, CacheEntry<PageData>>();
 const CACHE_TTL = 30000; // 30 seconds
+const pageCache = new TtlCache<PageData>(CACHE_TTL);
 
 export async function getPage(
   pageName: string,
@@ -17,9 +13,7 @@ export async function getPage(
 
   if (useCache) {
     const cached = pageCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return cached.data;
-    }
+    if (cached !== undefined) return cached;
   }
 
   try {
@@ -41,7 +35,7 @@ export async function getPage(
       }
     }
 
-    pageCache.set(cacheKey, { data: pageData, timestamp: Date.now() });
+    pageCache.set(cacheKey, pageData);
     return pageData;
   } catch (err) {
     console.error(`[Pretty Logseq] Failed to fetch page "${pageName}":`, err);

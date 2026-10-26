@@ -414,6 +414,26 @@ describe('Theme Color Management', () => {
       expect(offChanged).toHaveBeenCalledTimes(1);
       expect(offMode).toHaveBeenCalledTimes(1);
     });
+
+    it('ignores theme hooks that keep firing after dispose (no off-handle)', async () => {
+      const app = logseq.App as unknown as Record<string, unknown>;
+      const prev = app.onThemeChanged;
+      let hook: () => void = () => {};
+      app.onThemeChanged = vi.fn((cb: () => void) => {
+        hook = cb;
+      });
+      const callback = vi.fn();
+
+      try {
+        setupThemeObserver(callback)();
+      } finally {
+        app.onThemeChanged = prev;
+      }
+      hook();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(callback).not.toHaveBeenCalled();
+    });
   });
 
   describe('detectAccentWhenReady', () => {
@@ -471,6 +491,19 @@ describe('Theme Color Management', () => {
 
       dispose();
       vi.advanceTimersByTime(200 * 30);
+      expect(onReady).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not reschedule when onReady disposes mid-tick', () => {
+      vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        color: 'rgb(184, 90, 48)',
+      } as CSSStyleDeclaration);
+      let dispose = (): void => {};
+      const onReady = vi.fn(() => dispose());
+
+      dispose = detectAccentWhenReady(onReady);
+      vi.advanceTimersByTime(200 * 30);
+
       expect(onReady).toHaveBeenCalledTimes(1);
     });
 

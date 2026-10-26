@@ -158,6 +158,9 @@ export function detectAccentWhenReady(onReady: () => void): () => void {
   let stableCount = 0;
   let last: string | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // `onReady` may dispose mid-tick, after this tick's timer already fired, so
+  // clearing the timer alone can't stop the reschedule below.
+  let disposed = false;
 
   const tick = (): void => {
     attempts += 1;
@@ -171,12 +174,15 @@ export function detectAccentWhenReady(onReady: () => void): () => void {
       last = current;
     }
 
-    if (stableCount >= 2 || attempts >= maxAttempts) return;
+    if (disposed || stableCount >= 2 || attempts >= maxAttempts) return;
     timer = setTimeout(tick, intervalMs);
   };
 
   timer = setTimeout(tick, intervalMs);
-  return () => clearTimeout(timer);
+  return () => {
+    disposed = true;
+    clearTimeout(timer);
+  };
 }
 
 /**
@@ -193,7 +199,10 @@ export function setupThemeObserver(onThemeChange: () => void): () => void {
   // re-probes the DOM and re-injects the whole stylesheet, so coalesce them
   // into a single trailing-edge call 100ms after the last signal.
   let pending: ReturnType<typeof setTimeout> | undefined;
+  // Guards hooks that hand back no off-handle and so keep firing after dispose.
+  let disposed = false;
   const schedule = (): void => {
+    if (disposed) return;
     clearTimeout(pending);
     pending = setTimeout(onThemeChange, 100);
   };
@@ -229,6 +238,7 @@ export function setupThemeObserver(onThemeChange: () => void): () => void {
   observer.observe(doc.body, { attributes: true });
 
   return () => {
+    disposed = true;
     observer.disconnect();
     clearTimeout(pending);
     for (const off of offHooks) if (typeof off === 'function') off();

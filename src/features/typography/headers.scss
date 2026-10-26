@@ -1,3 +1,13 @@
+// Typography weight scale (Inter variable font). Defined here, not in styles.scss,
+// because this sheet is always injected and the gated sheets share the scale.
+:root {
+  --pl-font-weight-normal: 400;
+  --pl-font-weight-medium: 450;
+  --pl-font-weight-semibold: 550;
+  --pl-font-weight-bold: 650;
+  --pl-font-weight-heavy: 700;
+}
+
 .ls-block {
   h1,
   h2,

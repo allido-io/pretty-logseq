@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release-please:
@@ -20,7 +21,17 @@ jobs:
         id: release
         with:
           release-type: node
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      # PRs opened with GITHUB_TOKEN don't trigger workflows, so dispatch CI
+      # onto the release branch to report the checks the ruleset requires.
+      - name: Run CI on release PR
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run ci.yml \
+            --repo ${{ github.repository }} \
+            --ref ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
 
   build-and-upload:
     name: Build & Upload Release Artifact

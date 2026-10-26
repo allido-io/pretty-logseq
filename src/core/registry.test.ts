@@ -255,22 +255,22 @@ describe('FeatureRegistry', () => {
       testRegistry.register(mockFeature);
       await testRegistry.initializeFeature('test-feature');
 
-      testRegistry.destroyFeature('test-feature');
+      await testRegistry.destroyFeature('test-feature');
 
       expect(mockFeature.destroy).toHaveBeenCalled();
       expect(testRegistry.isInitialized('test-feature')).toBe(false);
     });
 
-    it('does not destroy uninitialized feature', () => {
+    it('does not destroy uninitialized feature', async () => {
       testRegistry.register(mockFeature);
 
-      testRegistry.destroyFeature('test-feature');
+      await testRegistry.destroyFeature('test-feature');
 
       expect(mockFeature.destroy).not.toHaveBeenCalled();
     });
 
-    it('does nothing when feature not found', () => {
-      expect(() => testRegistry.destroyFeature('non-existent')).not.toThrow();
+    it('does nothing when feature not found', async () => {
+      await expect(testRegistry.destroyFeature('non-existent')).resolves.toBeUndefined();
     });
 
     it('logs successful destruction', async () => {
@@ -279,7 +279,7 @@ describe('FeatureRegistry', () => {
       testRegistry.register(mockFeature);
       await testRegistry.initializeFeature('test-feature');
 
-      testRegistry.destroyFeature('test-feature');
+      await testRegistry.destroyFeature('test-feature');
 
       expect(consoleSpy).toHaveBeenCalledWith('[Pretty Logseq] Feature "test-feature" destroyed');
 
@@ -298,13 +298,84 @@ describe('FeatureRegistry', () => {
       testRegistry.register(failingFeature);
       await testRegistry.initializeFeature('test-feature');
 
-      testRegistry.destroyFeature('test-feature');
+      await testRegistry.destroyFeature('test-feature');
 
       expect(consoleSpy).toHaveBeenCalledWith(
         '[Pretty Logseq] Failed to destroy feature "test-feature":',
         expect.any(Error),
       );
 
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('pending init', () => {
+    function deferredFeature() {
+      let resolveInit!: () => void;
+      const feature: Feature = {
+        ...mockFeature,
+        init: vi.fn(
+          () =>
+            new Promise<void>(resolve => {
+              resolveInit = resolve;
+            }),
+        ),
+      };
+      return { feature, finishInit: () => resolveInit() };
+    }
+
+    it('destroyFeature waits for a pending init and then tears the feature down', async () => {
+      const { feature, finishInit } = deferredFeature();
+      testRegistry.register(feature);
+
+      const init = testRegistry.initializeFeature('test-feature');
+      const destroy = testRegistry.destroyFeature('test-feature');
+      expect(feature.destroy).not.toHaveBeenCalled();
+
+      finishInit();
+      await Promise.all([init, destroy]);
+
+      expect(feature.destroy).toHaveBeenCalledTimes(1);
+      expect(testRegistry.isInitialized('test-feature')).toBe(false);
+    });
+
+    it('runs init once and records initOrder once for a double initialize', async () => {
+      const { feature, finishInit } = deferredFeature();
+      testRegistry.register(feature);
+
+      const first = testRegistry.initializeFeature('test-feature');
+      const second = testRegistry.initializeFeature('test-feature');
+      finishInit();
+      await Promise.all([first, second]);
+
+      expect(feature.init).toHaveBeenCalledTimes(1);
+      await testRegistry.destroyAll();
+      expect(feature.destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('destroyAll waits for pending inits', async () => {
+      const { feature, finishInit } = deferredFeature();
+      testRegistry.register(feature);
+
+      const init = testRegistry.initializeFeature('test-feature');
+      const destroyAll = testRegistry.destroyAll();
+      finishInit();
+      await Promise.all([init, destroyAll]);
+
+      expect(feature.destroy).toHaveBeenCalledTimes(1);
+      expect(testRegistry.isInitialized('test-feature')).toBe(false);
+    });
+
+    it('allows a retry after a failed pending init', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const init = vi.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValue(undefined);
+      testRegistry.register({ ...mockFeature, init });
+
+      await testRegistry.initializeFeature('test-feature');
+      await testRegistry.initializeFeature('test-feature');
+
+      expect(init).toHaveBeenCalledTimes(2);
+      expect(testRegistry.isInitialized('test-feature')).toBe(true);
       consoleSpy.mockRestore();
     });
   });
@@ -331,7 +402,7 @@ describe('FeatureRegistry', () => {
       testRegistry.register(mockFeature);
       await testRegistry.initializeFeature('test-feature');
 
-      testRegistry.destroyFeature('test-feature');
+      await testRegistry.destroyFeature('test-feature');
 
       expect(testRegistry.isInitialized('test-feature')).toBe(false);
     });

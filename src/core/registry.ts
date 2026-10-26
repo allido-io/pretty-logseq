@@ -3,6 +3,8 @@ import type { Feature } from '../types';
 interface RegisteredFeature {
   feature: Feature;
   initialized: boolean;
+  /** In-flight `init()`, so a concurrent init/destroy can wait for it. */
+  pending?: Promise<void>;
 }
 
 export class FeatureRegistry {
@@ -43,7 +45,18 @@ export class FeatureRegistry {
     }
 
     if (registered.initialized) return;
+    if (registered.pending) return registered.pending;
 
+    const pending = this.runInit(id, registered);
+    registered.pending = pending;
+    try {
+      await pending;
+    } finally {
+      registered.pending = undefined;
+    }
+  }
+
+  private async runInit(id: string, registered: RegisteredFeature): Promise<void> {
     try {
       await registered.feature.init();
       registered.initialized = true;
@@ -54,9 +67,14 @@ export class FeatureRegistry {
     }
   }
 
-  destroyFeature(id: string): void {
+  async destroyFeature(id: string): Promise<void> {
     const registered = this.features.get(id);
-    if (!registered?.initialized) return;
+    if (!registered) return;
+
+    // A destroy that lands mid-init must wait for it, or the feature would
+    // finish initializing afterwards and be left running.
+    if (registered.pending) await registered.pending;
+    if (!registered.initialized) return;
 
     try {
       registered.feature.destroy();
@@ -73,10 +91,13 @@ export class FeatureRegistry {
   }
 
   async destroyAll(): Promise<void> {
+    // Let in-flight inits land first so they are included in the teardown.
+    await Promise.all(Array.from(this.features.values(), r => r.pending));
+
     // Tear down in reverse init order. Iterate a copy: destroyFeature prunes
     // initOrder as it goes.
     for (const id of [...this.initOrder].reverse()) {
-      this.destroyFeature(id);
+      await this.destroyFeature(id);
     }
     // A feature whose destroy() threw stays marked initialized but is dropped
     // from the order, matching the pre-refactor contract.

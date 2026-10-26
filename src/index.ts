@@ -128,10 +128,10 @@ async function applyBinding(binding: FeatureBinding, settings: PluginSettings): 
     if (settings[binding.enableKey]) {
       await registry.initializeFeature(binding.featureId);
     } else {
-      registry.destroyFeature(binding.featureId);
+      await registry.destroyFeature(binding.featureId);
     }
   } else if (binding.action === 'reinit') {
-    registry.destroyFeature(binding.featureId);
+    await registry.destroyFeature(binding.featureId);
     if (!binding.enableKey || settings[binding.enableKey]) {
       await registry.initializeFeature(binding.featureId);
     }

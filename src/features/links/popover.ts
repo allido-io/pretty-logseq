@@ -1,6 +1,6 @@
 import { getParentDoc, positionElement, removeElementById } from '../../lib/dom';
-import { fetchMetadata } from './metadata';
-import { applyPopoverBaseStyles, createFallbackMetadata, renderLinkPopover } from './render';
+import { createFallbackMetadata, fetchMetadata } from './metadata';
+import { applyPopoverBaseStyles, renderLinkPopover } from './render';
 import type { LinkMetadata } from './types';
 
 const LINK_POPOVER_ID = 'pretty-logseq-link-popover';

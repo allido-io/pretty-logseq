@@ -136,6 +136,34 @@ describe('createTitle', () => {
 
     expect(el.textContent).toBe('Plain Page');
   });
+
+  it('cleans a [[ref]]-wrapped icon like the properties observer does', () => {
+    const page: PageData = { name: 'My Page', properties: { icon: '[[📄]]' } };
+    const el = createTitle(page);
+
+    expect(el.textContent).toBe('📄 My Page');
+  });
+
+  it('uses the first element of an array-valued icon', () => {
+    const page: PageData = { name: 'My Page', properties: { icon: ['📄', '📁'] } };
+    const el = createTitle(page);
+
+    expect(el.textContent).toBe('📄 My Page');
+  });
+
+  it('ignores an empty-array icon instead of rendering a leading space', () => {
+    const page: PageData = { name: 'My Page', properties: { icon: [] } };
+    const el = createTitle(page);
+
+    expect(el.textContent).toBe('My Page');
+  });
+
+  it('treats a falsy icon value (false, 0) as no icon rather than stringifying it', () => {
+    expect(createTitle({ name: 'My Page', properties: { icon: false } }).textContent).toBe(
+      'My Page',
+    );
+    expect(createTitle({ name: 'My Page', properties: { icon: 0 } }).textContent).toBe('My Page');
+  });
 });
 
 describe('createDescription', () => {

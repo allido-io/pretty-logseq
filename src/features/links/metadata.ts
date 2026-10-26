@@ -82,6 +82,29 @@ async function requestHtml(url: string, signal: AbortSignal): Promise<HtmlRespon
   };
 }
 
+/**
+ * Build a minimal, URL-derived metadata object so the popover can render even
+ * when the metadata fetch is blocked (CSP `connect-src` / CORS in v2).
+ */
+export function createFallbackMetadata(url: string): LinkMetadata {
+  let domain = url;
+  try {
+    domain = new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    // Leave `domain` as the raw url if it can't be parsed.
+  }
+  return {
+    url,
+    title: null,
+    description: null,
+    image: null,
+    siteName: null,
+    domain,
+    faviconUrl: getFaviconUrl(domain),
+    error: null,
+  };
+}
+
 export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
   // Check cache
   const cached = metadataCache.get(url);
@@ -102,15 +125,8 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
     }
 
     if (!response.ok) {
-      const hostname = new URL(url).hostname.replace(/^www\./, '');
       const metadata: LinkMetadata = {
-        url,
-        title: null,
-        description: null,
-        image: null,
-        siteName: null,
-        domain: hostname,
-        faviconUrl: getFaviconUrl(hostname),
+        ...createFallbackMetadata(url),
         error: `This page returned ${response.status} (${response.statusText})`,
       };
       metadataCache.set(url, metadata);
@@ -143,16 +159,12 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
 
     const siteName = getMetaContent(doc, ['meta[property="og:site_name"]']);
 
-    const hostname = new URL(url).hostname.replace(/^www\./, '');
     const metadata: LinkMetadata = {
-      url,
+      ...createFallbackMetadata(url),
       title,
       description,
       image,
       siteName,
-      domain: hostname,
-      faviconUrl: getFaviconUrl(hostname),
-      error: null,
     };
 
     metadataCache.set(url, metadata);

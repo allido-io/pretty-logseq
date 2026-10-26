@@ -1,6 +1,6 @@
 import { getSettings } from '../../settings';
+import type { FeatureStrategy } from '../../types';
 import styles from './styles.v2.scss?inline';
-import type { PropertiesStrategy } from './v1';
 import { propertiesV1 } from './v1';
 
 /**
@@ -13,7 +13,7 @@ import { propertiesV1 } from './v1';
  * correctly (`src/core/platform/v2.ts`) — so `init`/`destroy` are identical to v1
  * and reuse its wiring (and its shared module-level cleanup).
  */
-export const propertiesV2: PropertiesStrategy = {
+export const propertiesV2: FeatureStrategy = {
   getStyles() {
     return getSettings().enablePrettyProperties ? styles : '';
   },

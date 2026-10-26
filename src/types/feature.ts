@@ -7,16 +7,10 @@ export interface Feature {
   destroy(): void;
 }
 
-export interface FeatureSetting {
-  key: string;
-  type: 'boolean' | 'string' | 'number' | 'enum';
-  default: unknown;
-  title: string;
-  description: string;
-  enumChoices?: string[];
-}
-
-export interface ConfigurableFeature extends Feature {
-  settings?: FeatureSetting[];
-  onSettingsChange?(settings: Record<string, unknown>): void;
-}
+/**
+ * The version-specific slice of a `Feature` — everything but its identity.
+ * A feature whose behavior diverges between Logseq editions keeps one
+ * `FeatureStrategy` per edition (`v1.ts` / `v2.ts`) and its `index.ts` picks one
+ * by `getVersion()` (see `features/properties` and `features/todos`).
+ */
+export type FeatureStrategy = Pick<Feature, 'getStyles' | 'init' | 'destroy'>;

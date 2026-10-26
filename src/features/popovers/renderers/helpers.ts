@@ -83,10 +83,14 @@ export function cleanAllValues(value: unknown): string[] {
  */
 export function createTitle(pageData: PageData): HTMLElement {
   const { name, properties } = pageData;
+  // Same guard + clean the properties-icon observer applies to this property:
+  // a falsy raw value (`false`, `0`, missing) means "no icon", and a truthy one
+  // may be `[[x]]`-wrapped or array-valued on either edition.
+  const icon = properties.icon ? cleanPropertyValue(properties.icon) : '';
 
   const title = document.createElement('a');
   title.className = 'pretty-popover__title';
-  title.textContent = properties.icon ? `${properties.icon} ${name}` : name;
+  title.textContent = icon ? `${icon} ${name}` : name;
   title.dataset.pageName = name;
 
   return title;

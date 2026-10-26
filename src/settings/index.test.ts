@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { partialMock } from '../../test/mocks/logseq';
 import {
   buildSettingsSchema,
   defaultSettings,
@@ -245,8 +244,9 @@ describe('Settings Management', () => {
         null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
       // Capture the callback
-      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
+      vi.mocked(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
+        return () => {};
       });
 
       onSettingsChanged(callback);
@@ -273,8 +273,9 @@ describe('Settings Management', () => {
       let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
         null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
+      vi.mocked(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
+        return () => {};
       });
 
       onSettingsChanged(callback);
@@ -308,8 +309,9 @@ describe('Settings Management', () => {
       let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
         null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
+      vi.mocked(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
+        return () => {};
       });
 
       onSettingsChanged(callback);
@@ -334,8 +336,9 @@ describe('Settings Management', () => {
       let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
         null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
+      vi.mocked(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
+        return () => {};
       });
 
       onSettingsChanged(callback);
@@ -352,8 +355,9 @@ describe('Settings Management', () => {
       let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
         null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
+      vi.mocked(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
+        return () => {};
       });
 
       onSettingsChanged(callback);

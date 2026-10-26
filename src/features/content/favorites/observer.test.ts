@@ -9,6 +9,9 @@ import * as favoritesApi from './api';
 import { clearFavoritesCache, refreshFavorites } from './api';
 import { cleanupFavoriteObserver, setupFavoriteObserver } from './observer';
 
+type RouteChangedHandler = Parameters<typeof logseq.App.onRouteChanged>[0];
+const routeEvent = { path: '/page/test', template: '/page/:name' };
+
 describe('setupFavoriteObserver', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -199,8 +202,8 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('logs when the favorites refresh on a route change fails', async () => {
-    let routeCallback: (() => void) | null = null as (() => void) | null;
-    partialMock(logseq.App.onRouteChanged).mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -218,7 +221,7 @@ describe('setupFavoriteObserver', () => {
     const refreshSpy = vi
       .spyOn(favoritesApi, 'refreshFavorites')
       .mockRejectedValue(new Error('refresh failed'));
-    routeCallback?.();
+    routeCallback?.(routeEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(errorSpy).toHaveBeenCalledWith(
@@ -296,8 +299,8 @@ describe('setupFavoriteObserver', () => {
   });
 
   it('refreshes favorites on route change', async () => {
-    let routeCallback: (() => void) | null = null as (() => void) | null;
-    partialMock(logseq.App.onRouteChanged).mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -307,7 +310,7 @@ describe('setupFavoriteObserver', () => {
 
     // Trigger route change
     vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['new-favorites']);
-    routeCallback?.();
+    routeCallback?.(routeEvent);
 
     await new Promise(resolve => setTimeout(resolve, 150)); // Wait for route change delay
 
@@ -468,8 +471,8 @@ describe('setupFavoriteObserver (v2)', () => {
   });
 
   it('re-injects the star on the next scan if the title block drops it', async () => {
-    let routeCallback: (() => void) | null = null as (() => void) | null;
-    partialMock(logseq.App.onRouteChanged).mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -483,7 +486,7 @@ describe('setupFavoriteObserver (v2)', () => {
     // Simulate a React re-render wiping the in-block star; the next scan (driven
     // here by a route change) must restore it despite the marker still being set.
     wrapper.querySelector('.pl-favorite-star')?.remove();
-    routeCallback?.();
+    routeCallback?.(routeEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(wrapper.querySelector('.pl-favorite-star')).not.toBeNull();
@@ -505,8 +508,8 @@ describe('setupFavoriteObserver (v2)', () => {
 
   it('re-syncs a star to active after the favorites cache refreshes on route change', async () => {
     // Capture the route-change callback so we can drive it.
-    let routeCallback: (() => void) | null = null as (() => void) | null;
-    partialMock(logseq.App.onRouteChanged).mockImplementation(cb => {
+    let routeCallback = null as RouteChangedHandler | null;
+    vi.mocked(logseq.App.onRouteChanged).mockImplementation(cb => {
       routeCallback = cb;
       return () => {};
     });
@@ -526,7 +529,7 @@ describe('setupFavoriteObserver (v2)', () => {
     vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
       { name: 'test-page', originalName: 'Test Page', uuid: 'uuid-1' },
     ] as unknown as string[]);
-    routeCallback?.();
+    routeCallback?.(routeEvent);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(star.classList.contains('pl-favorite-star--active')).toBe(true);

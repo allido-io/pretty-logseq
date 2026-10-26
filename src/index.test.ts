@@ -32,8 +32,8 @@ vi.mock('./core/styles', () => ({
 }));
 
 vi.mock('./core/theme', () => ({
-  detectAccentWhenReady: vi.fn(),
-  setupThemeObserver: vi.fn(),
+  detectAccentWhenReady: vi.fn(() => vi.fn()),
+  setupThemeObserver: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('./features/topbar', async importOriginal => ({
@@ -103,6 +103,24 @@ describe('bootstrap', () => {
     expect(injectStyles).toHaveBeenCalledTimes(1);
     expect(registry.initializeAll).toHaveBeenCalledTimes(1);
     expect(logseq.beforeunload).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes the theme observer and accent poller on unload', async () => {
+    vi.resetModules();
+    logseq.settings = { disabled: false } as typeof logseq.settings;
+
+    await import('./index');
+    const { setupThemeObserver, detectAccentWhenReady } = await import('./core/theme');
+    await vi.waitFor(() => expect(logseq.beforeunload).toHaveBeenCalledTimes(1));
+    const disposeObserver = vi.mocked(setupThemeObserver).mock.results[0].value;
+    const disposePoller = vi.mocked(detectAccentWhenReady).mock.results[0].value;
+    expect(disposeObserver).not.toHaveBeenCalled();
+
+    const onUnload = vi.mocked(logseq.beforeunload).mock.calls[0][0] as () => Promise<void>;
+    await onUnload();
+
+    expect(disposeObserver).toHaveBeenCalledTimes(1);
+    expect(disposePoller).toHaveBeenCalledTimes(1);
   });
 
   it('destroys every feature on unload', async () => {
@@ -366,6 +384,22 @@ describe('settings-change dispatch', () => {
         'Manually set',
       );
       expect(refreshStyles).toHaveBeenCalledTimes(1);
+    });
+
+    it('disposes and re-wires core theme setup', async () => {
+      const { change } = await boot();
+      const { setupThemeObserver, detectAccentWhenReady } = await import('./core/theme');
+      const firstObserver = vi.mocked(setupThemeObserver).mock.results[0].value;
+      const firstPoller = vi.mocked(detectAccentWhenReady).mock.results[0].value;
+
+      await change({ logseqVersion: 'v2' }, { logseqVersion: 'auto' });
+
+      expect(firstObserver).toHaveBeenCalledTimes(1);
+      expect(firstPoller).toHaveBeenCalledTimes(1);
+      expect(setupThemeObserver).toHaveBeenCalledTimes(2);
+      expect(detectAccentWhenReady).toHaveBeenCalledTimes(2);
+      // The re-wired disposers are live, not yet called.
+      expect(vi.mocked(setupThemeObserver).mock.results[1].value).not.toHaveBeenCalled();
     });
 
     it('does not run per-feature bindings for keys changed alongside the version', async () => {

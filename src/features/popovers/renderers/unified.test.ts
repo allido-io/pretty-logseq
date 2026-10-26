@@ -420,6 +420,32 @@ describe('renderPopover', () => {
       expect(el.querySelector('.pretty-popover__subtitle')?.textContent).toBe('Dev, Lead at Acme');
     });
 
+    it('renders one mailto link per email', () => {
+      const el = renderPopover(makePage('Page', { email: ['a@x.com', 'b@y.com'] }));
+      const links = [...el.querySelectorAll<HTMLAnchorElement>('.pretty-popover__detail-link')];
+      expect(links.map(l => l.href)).toEqual(['mailto:a@x.com', 'mailto:b@y.com']);
+      expect(links.map(l => l.textContent)).toEqual(['a@x.com', 'b@y.com']);
+    });
+
+    it('renders one tel link per phone number', () => {
+      const el = renderPopover(makePage('Page', { phone: ['555-0100', '555-0199'] }));
+      const links = [...el.querySelectorAll<HTMLAnchorElement>('.pretty-popover__detail-link')];
+      expect(links.map(l => l.href)).toEqual(['tel:555-0100', 'tel:555-0199']);
+    });
+
+    it('renders one link per repository URL', () => {
+      const el = renderPopover(
+        makePage('Page', {
+          repository: ['https://github.com/a/one', 'https://github.com/b/two'],
+        }),
+      );
+      const links = [...el.querySelectorAll<HTMLAnchorElement>('.pretty-popover__detail-link')];
+      expect(links.map(l => l.href)).toEqual([
+        'https://github.com/a/one',
+        'https://github.com/b/two',
+      ]);
+    });
+
     it('leaves one-element arrays and scalars unchanged', () => {
       const arr = renderPopover(makePage('Page', { author: ['[[Alice]]'], type: ['Book'] }));
       expect(arr.querySelector('.pretty-popover__subtitle')?.textContent).toBe('Alice');

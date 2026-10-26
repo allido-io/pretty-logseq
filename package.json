@@ -1,6 +1,6 @@
 {
   "name": "pretty-logseq",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A Logseq plugin for custom page preview popovers with rich property display",
   "main": "dist/index.html",
   "scripts": {
@@ -19,17 +19,17 @@
     "effect": true
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.7",
+    "@biomejs/biome": "^2.6.2",
     "@logseq/libs": "^0.0.17",
     "@testing-library/dom": "^10.4.1",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "jsdom": "^30.0.1",
-    "sass": "^1.102.0",
+    "sass": "^1.106.1",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1",
+    "vite": "^8.3.5",
     "vite-plugin-logseq": "^1.1.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "keywords": [
     "logseq",

@@ -133,15 +133,8 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
     }
 
     if (!response.ok) {
-      const hostname = new URL(url).hostname.replace(/^www\./, '');
       const metadata: LinkMetadata = {
-        url,
-        title: null,
-        description: null,
-        image: null,
-        siteName: null,
-        domain: hostname,
-        faviconUrl: getFaviconUrl(hostname),
+        ...createFallbackMetadata(url),
         error: `This page returned ${response.status} (${response.statusText})`,
       };
       metadataCache.set(url, { data: metadata, timestamp: Date.now() });
@@ -174,16 +167,12 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
 
     const siteName = getMetaContent(doc, ['meta[property="og:site_name"]']);
 
-    const hostname = new URL(url).hostname.replace(/^www\./, '');
     const metadata: LinkMetadata = {
-      url,
+      ...createFallbackMetadata(url),
       title,
       description,
       image,
       siteName,
-      domain: hostname,
-      faviconUrl: getFaviconUrl(hostname),
-      error: null,
     };
 
     metadataCache.set(url, { data: metadata, timestamp: Date.now() });

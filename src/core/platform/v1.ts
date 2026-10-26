@@ -1,4 +1,4 @@
-import { clearPageCache, getPage, getPageBlocks, getThemeMode } from '../../lib/api';
+import { getPage, getPageBlocks } from '../../lib/api';
 import type { Platform } from './types';
 
 /**
@@ -21,8 +21,6 @@ export const v1Platform: Platform = {
   api: {
     getPageData: (name, options) => getPage(name, options),
     getPageBlocks: name => getPageBlocks(name),
-    getThemeMode: () => getThemeMode(),
-    clearPageCache: name => clearPageCache(name),
     getFavorites: async () => (await logseq.App.getCurrentGraphFavorites()) || [],
     toggleFavorite: async (pageName, shouldFavorite) => {
       // v1 stores favorites in the graph config; rewrite the list. Read current

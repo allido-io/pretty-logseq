@@ -280,6 +280,40 @@ describe('Property Observer', () => {
     cleanup();
   });
 
+  it('does not count a failure that lands after teardown against the next activation', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rejectLate: (err: Error) => void = () => {};
+    vi.mocked(getPageData).mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectLate = reject;
+        }),
+    );
+
+    createPropertyBlock(['status']);
+    const firstCleanup = setupPropertyObserver();
+    await vi.waitFor(() => {
+      expect(getPageData).toHaveBeenCalledTimes(1);
+    });
+
+    firstCleanup();
+    rejectLate(new Error('late'));
+    await new Promise(r => setTimeout(r, 0));
+
+    vi.mocked(getPageData).mockRejectedValue(new Error('blip'));
+    const cleanup = setupPropertyObserver();
+
+    // The re-activated observer still gets its full three attempts.
+    for (let attempt = 2; attempt <= 4; attempt++) {
+      await vi.waitFor(() => {
+        expect(getPageData).toHaveBeenCalledTimes(attempt);
+      });
+      document.body.appendChild(document.createElement('div'));
+    }
+
+    cleanup();
+  });
+
   it('skips when key text is empty', async () => {
     const block = document.createElement('div');
     block.className = 'page-properties';

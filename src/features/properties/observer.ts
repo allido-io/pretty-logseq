@@ -12,11 +12,15 @@ const failedLookups = new Map<string, number>();
 // Keys with the same name (e.g. a page open in both main and sidebar) share one
 // lookup, so a single failure is counted and logged once, not once per element.
 const pendingLookups = new Map<string, Promise<PageData | null>>();
+// Bumped on cleanup, so a lookup that fails after teardown isn't counted
+// against the next activation's retry cap.
+let generation = 0;
 
 function lookupPage(keyName: string): Promise<PageData | null> {
   const pending = pendingLookups.get(keyName);
   if (pending) return pending;
 
+  const startedIn = generation;
   const lookup = getPlatform()
     .api.getPageData(keyName, { throwOnError: true })
     .then(
@@ -25,7 +29,9 @@ function lookupPage(keyName: string): Promise<PageData | null> {
         return page;
       },
       err => {
-        failedLookups.set(keyName, (failedLookups.get(keyName) ?? 0) + 1);
+        if (startedIn === generation) {
+          failedLookups.set(keyName, (failedLookups.get(keyName) ?? 0) + 1);
+        }
         console.error(`[Pretty Logseq] Property icon lookup failed for "${keyName}":`, err);
         throw err;
       },
@@ -73,6 +79,7 @@ function scanProperties(isLive: () => boolean): void {
 }
 
 function cleanupAll(): void {
+  generation++;
   failedLookups.clear();
   const doc = getParentDoc();
   for (const el of doc.querySelectorAll(`.${ICON_CLASS}`)) {

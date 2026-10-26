@@ -1,11 +1,8 @@
 import { getSettings } from '../../settings';
-import type { Feature } from '../../types';
+import type { FeatureStrategy } from '../../types';
 import dimChildrenStyles from './dim-children.scss?inline';
 import { setupTodoObserver } from './observer';
 import styles from './styles.scss?inline';
-
-/** The version-specific slice of a feature (everything but its identity). */
-export type TodosStrategy = Pick<Feature, 'getStyles' | 'init' | 'destroy'>;
 
 let cleanup: (() => void) | null = null;
 
@@ -14,7 +11,7 @@ let cleanup: (() => void) | null = null;
  * (`.todo`/`.doing`/`.done`/…, `a.priority`) and runs the observer that injects
  * a "CANCELLED" label and flags past-due SCHEDULED/DEADLINE dates.
  */
-export const todosV1: TodosStrategy = {
+export const todosV1: FeatureStrategy = {
   getStyles() {
     const settings = getSettings();
     if (!settings.enablePrettyTodos) return '';

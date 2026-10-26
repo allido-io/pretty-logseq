@@ -1,8 +1,8 @@
 import { getSettings } from '../../settings';
+import type { FeatureStrategy } from '../../types';
 import dimChildrenStyles from './dim-children.v2.scss?inline';
 import hiddenPropertiesPillStyles from './hidden-properties-pill.v2.scss?inline';
 import styles from './styles.v2.scss?inline';
-import type { TodosStrategy } from './v1';
 
 /**
  * Logseq v2 (DB) todos.
@@ -13,7 +13,7 @@ import type { TodosStrategy } from './v1';
  * native `.overdue` class. So v2 is styling-only (`styles.v2.scss`) and needs no
  * observer — hence the no-op `init`/`destroy` (nothing to inject or clean up).
  */
-export const todosV2: TodosStrategy = {
+export const todosV2: FeatureStrategy = {
   getStyles() {
     const settings = getSettings();
     if (!settings.enablePrettyTodos) return '';

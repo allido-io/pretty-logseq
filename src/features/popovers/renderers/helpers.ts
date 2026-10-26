@@ -1,20 +1,29 @@
 import { cleanBlockContent, cleanPropertyValue } from '../../../lib/api';
 import type { BlockData, PageData } from '../../../types';
 
+/** Accept only absolute http(s) URLs; anything else (javascript:, data:, file:, relative) is rejected. */
+function toSafeUrl(candidate: string): string | null {
+  try {
+    const { protocol } = new URL(candidate);
+    return protocol === 'http:' || protocol === 'https:' ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Extract a URL from a Logseq property value.
- * Handles markdown link format [text](url) and plain URLs.
+ * Handles markdown link format [text](url) and plain URLs. Only http(s) URLs
+ * are returned — the result feeds `href`/`src` in the parent Logseq document.
  */
 export function extractUrl(value: unknown): string | null {
   const raw = cleanPropertyValue(value);
   if (!raw) return null;
 
   const mdMatch = raw.match(/\[.*?\]\((.*?)\)/);
-  if (mdMatch) return mdMatch[1];
+  if (mdMatch) return toSafeUrl(mdMatch[1].trim());
 
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-
-  return null;
+  return toSafeUrl(raw);
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

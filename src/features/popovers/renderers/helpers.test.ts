@@ -59,6 +59,19 @@ describe('extractUrl', () => {
   it('extracts URL from markdown link with descriptive text', () => {
     expect(extractUrl('[My Site](https://mysite.org/page)')).toBe('https://mysite.org/page');
   });
+
+  it.each([
+    ['javascript:', '[docs](javascript:alert(1))'],
+    ['data:', '[x](data:text/html,<script>alert(1)</script>)'],
+    ['file:', '[x](file:///etc/passwd)'],
+    ['relative', '[x](/relative/path)'],
+  ])('rejects a markdown link with a %s URL', (_label, value) => {
+    expect(extractUrl(value)).toBeNull();
+  });
+
+  it('rejects a plain non-http(s) URL', () => {
+    expect(extractUrl('javascript:alert(1)')).toBeNull();
+  });
 });
 
 describe('formatUrlLabel', () => {

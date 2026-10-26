@@ -199,15 +199,6 @@ describe('settings-change dispatch', () => {
       expect(registry.initializeFeature).toHaveBeenCalledWith('content');
     });
 
-    it('rebuilds content when bullet threading toggles', async () => {
-      const { change, registry } = await boot();
-
-      change({ enableBulletThreading: false }, { enableBulletThreading: true });
-
-      expect(registry.destroyFeature).toHaveBeenCalledWith('content');
-      expect(registry.initializeFeature).toHaveBeenCalledWith('content');
-    });
-
     it('always rebuilds sidebar-tags, including when set to off', async () => {
       const { change, registry } = await boot();
 
@@ -223,6 +214,16 @@ describe('settings-change dispatch', () => {
       const { change, registry, refreshStyles } = await boot();
 
       change({ topbarGradient: false }, { topbarGradient: true });
+
+      expect(refreshStyles).toHaveBeenCalledTimes(1);
+      expect(registry.initializeFeature).not.toHaveBeenCalled();
+      expect(registry.destroyFeature).not.toHaveBeenCalled();
+    });
+
+    it('does not rebuild content when bullet threading toggles (style-only)', async () => {
+      const { change, registry, refreshStyles } = await boot();
+
+      change({ enableBulletThreading: false }, { enableBulletThreading: true });
 
       expect(refreshStyles).toHaveBeenCalledTimes(1);
       expect(registry.initializeFeature).not.toHaveBeenCalled();

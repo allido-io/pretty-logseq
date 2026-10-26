@@ -79,7 +79,7 @@ const FEATURE_BINDINGS: FeatureBinding[] = [
     enableKey: 'enablePrettyProperties',
   },
   {
-    keys: ['enableBulletThreading', 'enableFavoriteStar'],
+    keys: ['enableFavoriteStar'],
     action: 'reinit',
     featureId: 'content',
   },
@@ -97,6 +97,7 @@ const FEATURE_BINDINGS: FeatureBinding[] = [
       'enablePrettyTables',
       'enablePrettyTags',
       'enablePrettyTemplates',
+      'enableBulletThreading',
       'dimTodoChildBlocks',
       'hideTodoHiddenPropertiesPill',
       'compactSidebarNav',

@@ -12,7 +12,15 @@ async function processPropertyKey(keyEl: Element): Promise<void> {
   const keyName = keyEl.textContent?.trim();
   if (!keyName) return;
 
-  const page = await getPlatform().api.getPageData(keyName);
+  let page: Awaited<ReturnType<ReturnType<typeof getPlatform>['api']['getPageData']>>;
+  try {
+    page = await getPlatform().api.getPageData(keyName);
+  } catch (err) {
+    // Unmark so a later scan retries; a null result (no such page) stays marked.
+    keyEl.removeAttribute(RESOLVED_ATTR);
+    console.error(`[Pretty Logseq] Property icon lookup failed for "${keyName}":`, err);
+    return;
+  }
   if (!page?.properties?.icon) return;
 
   const icon = cleanPropertyValue(page.properties.icon);

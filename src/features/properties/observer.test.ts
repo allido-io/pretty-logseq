@@ -161,6 +161,35 @@ describe('Property Observer', () => {
     cleanup();
   });
 
+  it('logs a rejected lookup and unmarks the key so a later scan retries it', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getPageData).mockRejectedValueOnce(new Error('api not ready'));
+
+    const block = createPropertyBlock(['status']);
+    const keyEl = block.querySelector('.page-property-key');
+
+    const cleanup = setupPropertyObserver();
+
+    await vi.waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Pretty Logseq]'),
+        expect.any(Error),
+      );
+    });
+    expect(keyEl?.hasAttribute(RESOLVED_ATTR)).toBe(false);
+
+    vi.mocked(getPageData).mockResolvedValue({
+      properties: { icon: '📦' },
+    } as Awaited<ReturnType<typeof getPageData>>);
+    document.body.appendChild(document.createElement('div'));
+
+    await vi.waitFor(() => {
+      expect(block.querySelector(`.${ICON_CLASS}`)?.textContent).toBe('📦');
+    });
+
+    cleanup();
+  });
+
   it('skips when key text is empty', async () => {
     const block = document.createElement('div');
     block.className = 'page-properties';

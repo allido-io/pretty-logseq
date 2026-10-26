@@ -190,6 +190,11 @@ function registerFeatures(): void {
   registry.register(typographyFeature);
 }
 
+/** Tail of the serialized settings-change chain; `beforeunload` waits for it. */
+let pendingSettingsChange: Promise<void> = Promise.resolve();
+/** Set once unload begins so queued-but-unstarted settings changes are skipped. */
+let unloading = false;
+
 async function main(): Promise<void> {
   console.log('[Pretty Logseq] Plugin loading...');
 
@@ -215,10 +220,10 @@ async function main(): Promise<void> {
   // initialized once its init resolves — so a change landing mid-flight could
   // find `destroyFeature` a no-op and leave the feature running after it was
   // turned off. Chaining each change onto the previous one closes that window.
-  let pending: Promise<void> = Promise.resolve();
+  // Changes still queued when unload begins are skipped (see `beforeunload`).
   onSettingsChanged((newSettings, oldSettings) => {
-    pending = pending
-      .then(() => handleSettingsChange(newSettings, oldSettings))
+    pendingSettingsChange = pendingSettingsChange
+      .then(() => (unloading ? undefined : handleSettingsChange(newSettings, oldSettings)))
       .catch(err => console.error('[Pretty Logseq] Failed to apply settings change:', err));
   });
 
@@ -227,6 +232,11 @@ async function main(): Promise<void> {
 
 logseq.beforeunload(async () => {
   console.log('[Pretty Logseq] Plugin unloading...');
+  // Let an in-flight settings change finish (its init could otherwise land
+  // after cleanup and leave observers on the host document), and drop any
+  // changes queued behind it. The chain never rejects, so this cannot throw.
+  unloading = true;
+  await pendingSettingsChange;
   await registry.destroyAll();
 });
 

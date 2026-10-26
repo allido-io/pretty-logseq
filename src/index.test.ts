@@ -284,6 +284,37 @@ describe('settings-change dispatch', () => {
       );
     });
 
+    it('unload waits for an in-flight change, skips queued ones, then destroys all', async () => {
+      const { change, registry, refreshStyles } = await boot();
+      let resolveInit: () => void = () => {};
+      vi.mocked(registry.initializeFeature).mockImplementationOnce(
+        () => new Promise<void>(resolve => (resolveInit = resolve)),
+      );
+      const onUnload = vi.mocked(logseq.beforeunload).mock.calls[0][0] as () => Promise<void>;
+
+      // One change in flight (its init is pending)…
+      const inFlight = change({ enablePopovers: true }, { enablePopovers: false });
+      await flush();
+      expect(registry.initializeFeature).toHaveBeenCalledWith('popovers');
+      // …one queued behind it, then unload begins.
+      const queued = change({ topbarGradient: false }, { topbarGradient: true });
+      const unload = onUnload();
+      await flush();
+
+      expect(registry.destroyAll).not.toHaveBeenCalled();
+
+      resolveInit();
+      await Promise.all([inFlight, queued, unload]);
+      await flush();
+
+      // The in-flight change completed (its refresh ran); the queued one did not.
+      expect(refreshStyles).toHaveBeenCalledTimes(1);
+      expect(registry.destroyAll).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(registry.initializeFeature).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(registry.destroyAll).mock.invocationCallOrder[0],
+      );
+    });
+
     it('keeps applying later changes after one fails', async () => {
       const { change, registry, refreshStyles } = await boot();
       vi.mocked(registry.initializeFeature).mockRejectedValueOnce(new Error('init exploded'));

@@ -379,6 +379,63 @@ describe('Theme Color Management', () => {
     });
   });
 
+  describe('setupThemeObserver disposer', () => {
+    it('stops the observer and cancels a pending refresh', async () => {
+      const callback = vi.fn();
+      const dispose = setupThemeObserver(callback);
+
+      document.documentElement.className = 'dark-theme';
+      // Let the observer fire so a trailing refresh is pending, then dispose.
+      await Promise.resolve();
+      dispose();
+      await new Promise(resolve => setTimeout(resolve, 150));
+      expect(callback).not.toHaveBeenCalled();
+
+      document.documentElement.className = 'light-theme';
+      await new Promise(resolve => setTimeout(resolve, 150));
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('unsubscribes the Logseq theme hooks when they return off-handles', () => {
+      const offChanged = vi.fn();
+      const offMode = vi.fn();
+      const app = logseq.App as unknown as Record<string, unknown>;
+      const prev = { c: app.onThemeChanged, m: app.onThemeModeChanged };
+      app.onThemeChanged = vi.fn(() => offChanged);
+      app.onThemeModeChanged = vi.fn(() => offMode);
+
+      try {
+        setupThemeObserver(vi.fn())();
+      } finally {
+        app.onThemeChanged = prev.c;
+        app.onThemeModeChanged = prev.m;
+      }
+
+      expect(offChanged).toHaveBeenCalledTimes(1);
+      expect(offMode).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores theme hooks that keep firing after dispose (no off-handle)', async () => {
+      const app = logseq.App as unknown as Record<string, unknown>;
+      const prev = app.onThemeChanged;
+      let hook: () => void = () => {};
+      app.onThemeChanged = vi.fn((cb: () => void) => {
+        hook = cb;
+      });
+      const callback = vi.fn();
+
+      try {
+        setupThemeObserver(callback)();
+      } finally {
+        app.onThemeChanged = prev;
+      }
+      hook();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
   describe('detectAccentWhenReady', () => {
     beforeEach(() => {
       vi.useFakeTimers();
@@ -420,6 +477,34 @@ describe('Theme Color Management', () => {
 
       // First usable read + two stable confirmations, then it stops.
       expect(onReady).toHaveBeenCalledTimes(3);
+    });
+
+    it('stops polling once disposed', () => {
+      vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        color: 'rgb(184, 90, 48)',
+      } as CSSStyleDeclaration);
+      const onReady = vi.fn();
+
+      const dispose = detectAccentWhenReady(onReady);
+      vi.advanceTimersByTime(200);
+      expect(onReady).toHaveBeenCalledTimes(1);
+
+      dispose();
+      vi.advanceTimersByTime(200 * 30);
+      expect(onReady).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not reschedule when onReady disposes mid-tick', () => {
+      vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        color: 'rgb(184, 90, 48)',
+      } as CSSStyleDeclaration);
+      let dispose = (): void => {};
+      const onReady = vi.fn(() => dispose());
+
+      dispose = detectAccentWhenReady(onReady);
+      vi.advanceTimersByTime(200 * 30);
+
+      expect(onReady).toHaveBeenCalledTimes(1);
     });
 
     it('gives up (keeps the fallback) when no accent ever resolves', () => {

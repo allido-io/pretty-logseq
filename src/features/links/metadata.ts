@@ -70,7 +70,10 @@ async function requestHtml(url: string, signal: AbortSignal): Promise<HtmlRespon
       headers: { Accept: 'text/html' },
       timeout: FETCH_TIMEOUT,
     })) as string | null;
-    return { ok: true, status: 200, statusText: 'OK', text: text ?? '' };
+    // The proxy exposes no status code; a null/empty body (blocked, timed out,
+    // non-text response) is the only failure signal it gives.
+    if (!text) throw new Error('Empty response from logseq.Request proxy');
+    return { ok: true, status: 200, statusText: 'OK', text };
   }
 
   const response = await fetch(url, { signal, headers: { Accept: 'text/html' } });

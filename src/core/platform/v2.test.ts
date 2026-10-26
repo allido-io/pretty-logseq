@@ -124,5 +124,17 @@ describe('v2Platform', () => {
       await v2Platform.api.toggleFavorite('any-page', true);
       expect(logseq.App.invokeExternalCommand).toHaveBeenCalledWith('logseq.page/toggle-favorite');
     });
+
+    it('skips the blind toggle when the page is already in the requested state', async () => {
+      vi.mocked(logseq.App.invokeExternalCommand).mockClear();
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Any Page'] as string[]);
+
+      await v2Platform.api.toggleFavorite('any page', true);
+      expect(logseq.App.invokeExternalCommand).not.toHaveBeenCalled();
+
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+      await v2Platform.api.toggleFavorite('any page', false);
+      expect(logseq.App.invokeExternalCommand).not.toHaveBeenCalled();
+    });
   });
 });

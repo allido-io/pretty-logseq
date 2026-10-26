@@ -14,7 +14,7 @@ jobs:
   # Lint and format check
   lint:
     name: Lint & Format
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -40,7 +40,7 @@ jobs:
   # Run tests with coverage
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -71,7 +71,7 @@ jobs:
   # Build the plugin
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -101,7 +101,7 @@ jobs:
   # All checks must pass
   ci-success:
     name: All Checks Passed
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [lint, test, build]
     if: always()
     steps:

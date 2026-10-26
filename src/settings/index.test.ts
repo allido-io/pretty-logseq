@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { partialMock } from '../../test/mocks/logseq';
 import {
   buildSettingsSchema,
   defaultSettings,
@@ -104,7 +105,7 @@ describe('Settings Management', () => {
     it('passes schema with correct structure', () => {
       initSettings();
 
-      const schema = logseq.useSettingsSchema.mock.calls[0][0];
+      const schema = vi.mocked(logseq.useSettingsSchema).mock.calls[0][0];
       expect(Array.isArray(schema)).toBe(true);
       expect(schema.length).toBeGreaterThan(0);
 
@@ -240,10 +241,11 @@ describe('Settings Management', () => {
 
     it('callback receives merged settings with defaults', () => {
       const callback = vi.fn();
-      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null = null;
+      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
+        null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
       // Capture the callback
-      logseq.onSettingsChanged.mockImplementation(cb => {
+      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
       });
 
@@ -268,9 +270,10 @@ describe('Settings Management', () => {
 
     it('merges both new and old settings with defaults', () => {
       const callback = vi.fn();
-      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null = null;
+      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
+        null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      logseq.onSettingsChanged.mockImplementation(cb => {
+      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
       });
 
@@ -302,9 +305,10 @@ describe('Settings Management', () => {
 
     it('filters out disabled property from settings', () => {
       const callback = vi.fn();
-      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null = null;
+      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
+        null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      logseq.onSettingsChanged.mockImplementation(cb => {
+      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
       });
 
@@ -327,9 +331,10 @@ describe('Settings Management', () => {
 
     it('handles null/undefined settings gracefully', () => {
       const callback = vi.fn();
-      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null = null;
+      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
+        null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      logseq.onSettingsChanged.mockImplementation(cb => {
+      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
       });
 
@@ -344,9 +349,10 @@ describe('Settings Management', () => {
 
     it('handles empty settings objects', () => {
       const callback = vi.fn();
-      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null = null;
+      let registeredCallback: ((newSettings: unknown, oldSettings: unknown) => void) | null =
+        null as ((newSettings: unknown, oldSettings: unknown) => void) | null;
 
-      logseq.onSettingsChanged.mockImplementation(cb => {
+      partialMock(logseq.onSettingsChanged).mockImplementation(cb => {
         registeredCallback = cb;
       });
 

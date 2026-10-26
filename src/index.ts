@@ -24,19 +24,29 @@ import {
   type PluginSettings,
 } from './settings';
 
-type BindingAction = 'toggle' | 'reinit' | 'restyle';
-
-interface FeatureBinding {
+interface BaseBinding {
   /** Setting keys that trigger this binding when any of them changes. */
   keys: (keyof PluginSettings)[];
-  action: BindingAction;
-  /** Feature to (re)init/destroy for 'toggle'/'reinit'. */
-  featureId?: string;
-  /** Gate: the feature is active only while this setting is true. */
-  enableKey?: keyof PluginSettings;
   /** Imperative side effect to run on change (e.g. DOM repositioning). */
   onChange?: () => void;
 }
+
+type FeatureBinding =
+  | (BaseBinding & {
+      action: 'toggle';
+      /** Feature to init/destroy. */
+      featureId: string;
+      /** Gate: the feature is active only while this setting is true. */
+      enableKey: keyof PluginSettings;
+    })
+  | (BaseBinding & {
+      action: 'reinit';
+      /** Feature to destroy then re-init. */
+      featureId: string;
+      /** Optional gate: skip the re-init while this setting is false. */
+      enableKey?: keyof PluginSettings;
+    })
+  | (BaseBinding & { action: 'restyle' });
 
 /**
  * Declarative map of setting keys → how a change should be applied. Replaces the
@@ -114,13 +124,13 @@ const FEATURE_BINDINGS: FeatureBinding[] = [
 ];
 
 async function applyBinding(binding: FeatureBinding, settings: PluginSettings): Promise<void> {
-  if (binding.action === 'toggle' && binding.featureId && binding.enableKey) {
+  if (binding.action === 'toggle') {
     if (settings[binding.enableKey]) {
       await registry.initializeFeature(binding.featureId);
     } else {
       registry.destroyFeature(binding.featureId);
     }
-  } else if (binding.action === 'reinit' && binding.featureId) {
+  } else if (binding.action === 'reinit') {
     registry.destroyFeature(binding.featureId);
     if (!binding.enableKey || settings[binding.enableKey]) {
       await registry.initializeFeature(binding.featureId);

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.4](https://github.com/allido-io/pretty-logseq/compare/v2.0.3...v2.0.4) (2026-10-26)
+
+
+### Bug Fixes
+
+* point plugin manifest and docs at allido-io/pretty-logseq ([#102](https://github.com/allido-io/pretty-logseq/issues/102)) ([4ded8df](https://github.com/allido-io/pretty-logseq/commit/4ded8df6d08a5c27169b9d0c7954e5005d65a502))
+
 ## [2.0.3](https://github.com/dmeents/pretty-logseq/compare/v2.0.2...v2.0.3) (2026-07-23)
 
 

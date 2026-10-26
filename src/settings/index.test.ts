@@ -210,6 +210,14 @@ describe('Settings Management', () => {
       expect(status?.description).toContain('Manually set');
     });
 
+    it('lists every PluginSettings key exactly once (and nothing else) when unversioned', () => {
+      const controlKeys = buildSettingsSchema()
+        .filter(item => item.type !== 'heading')
+        .map(item => item.key);
+
+      expect([...controlKeys].sort()).toEqual(Object.keys(defaultSettings).sort());
+    });
+
     it('sources toggle defaults from defaultSettings (no schema/default drift)', () => {
       const schema = buildSettingsSchema();
       for (const item of schema) {

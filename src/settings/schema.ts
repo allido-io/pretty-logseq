@@ -59,8 +59,10 @@ type BooleanSettingKey = {
   [K in keyof PluginSettings]: PluginSettings[K] extends boolean ? K : never;
 }[keyof PluginSettings];
 
-interface SettingToggle {
-  key: BooleanSettingKey | 'sidebarPageTags';
+/** Keys of `PluginSettings` rendered as an enum select (everything else but the version picker). */
+type EnumSettingKey = Exclude<keyof PluginSettings, BooleanSettingKey | 'logseqVersion'>;
+
+interface ToggleBase {
   title: string;
   /** Optional — omit when the title is self-explanatory (Logseq also shows the key). */
   description?: string;
@@ -70,11 +72,14 @@ interface SettingToggle {
    * it (e.g. v1-only toggles whose target element doesn't exist in v2).
    */
   versions?: ('v1' | 'v2')[];
-  /** Control type; defaults to `'boolean'`. */
-  type?: 'boolean' | 'enum';
-  /** Choices for an `enum` toggle (required when `type: 'enum'`). */
-  enumChoices?: string[];
 }
+
+/** An enum toggle: its choices are typed against the setting's own value type. */
+type EnumToggle = {
+  [K in EnumSettingKey]: ToggleBase & { type: 'enum'; key: K; enumChoices: PluginSettings[K][] };
+}[EnumSettingKey];
+
+type SettingToggle = (ToggleBase & { type?: 'boolean'; key: BooleanSettingKey }) | EnumToggle;
 
 interface SettingGroup {
   /** Heading key + label shown as the group divider. */
@@ -268,16 +273,15 @@ export function buildSettingsSchema(version?: VersionInfo): SettingSchemaDesc[] 
   const schema: SettingSchemaDesc[] = [heading('compatibilityHeading', 'Compatibility')];
 
   if (version) {
-    schema.push({
-      key: 'detectedVersionStatus',
-      title: `● Active: ${VERSION_LABELS[version.active]}`,
-      description:
+    schema.push(
+      heading(
+        'detectedVersionStatus',
+        `● Active: ${VERSION_LABELS[version.active]}`,
         version.source === 'auto'
           ? `Auto-detected this graph as the ${version.active} app. Use the dropdown below to override.`
           : `Manually set to the ${version.active} app. Set the dropdown below to 'auto' to re-detect.`,
-      type: 'heading',
-      default: null,
-    });
+      ),
+    );
   }
 
   schema.push({
@@ -306,7 +310,7 @@ export function buildSettingsSchema(version?: VersionInfo): SettingSchemaDesc[] 
           title: t.title,
           description: t.description ?? '',
           type: 'enum',
-          enumChoices: t.enumChoices ?? [],
+          enumChoices: t.enumChoices,
           enumPicker: 'select',
           default: defaultSettings[t.key],
         });

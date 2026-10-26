@@ -57,14 +57,6 @@ jobs:
       - name: Run tests with coverage
         run: pnpm test:coverage
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
-        if: github.actor != 'dependabot[bot]'
-        with:
-          directory: coverage/
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-
   # Build the plugin
   build:
     name: Build

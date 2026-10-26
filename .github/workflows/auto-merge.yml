@@ -1,0 +1,107 @@
+name: Auto-merge
+
+# Turns on GitHub auto-merge for same-repo `claude/*` PRs labelled
+# `ready-to-merge`, unless they touch a path gated by scripts/ci/check-gated.sh.
+# GitHub then squash-merges once the ruleset's required checks and review-thread
+# resolution pass. A new commit, or removing the label, turns auto-merge back off.
+#
+# pull_request_target runs this file and the gate script as they are on main,
+# so a PR can't loosen its own gate. Never check out or run the PR's code here.
+on:
+  pull_request_target:
+    types: [labeled, unlabeled, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  arm:
+    name: Arm auto-merge
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      pull-requests: read
+    # AUTO_MERGE_ENABLED is the kill switch. The head-repo check keeps out fork
+    # PRs whose branch happens to be named `claude/...`.
+    if: >-
+      vars.AUTO_MERGE_ENABLED == 'true' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'claude/') &&
+      (
+        (github.event.action == 'labeled' && github.event.label.name == 'ready-to-merge') ||
+        (github.event.action == 'reopened' && contains(github.event.pull_request.labels.*.name, 'ready-to-merge'))
+      )
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+
+      - name: Check for gated paths
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # The files endpoint pages at 30, so --paginate. A failed fetch counts as
+          # gated, and previous_filename catches a gated file renamed away.
+          if ! files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" \
+              --jq '.[] | .filename, (.previous_filename // empty)')"; then
+            echo "Couldn't list the PR's files; treating it as gated."
+            echo "gated=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "$files"
+          echo "gated=$(printf '%s\n' "$files" | bash scripts/ci/check-gated.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Create app token
+        id: app-token
+        if: steps.gate.outputs.gated == 'false'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Enable auto-merge
+        if: steps.gate.outputs.gated == 'false'
+        env:
+          # Not GITHUB_TOKEN: a merge made with it doesn't trigger the push
+          # workflows on main (CI and release-please).
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Withhold
+        if: steps.gate.outputs.gated != 'false'
+        run: echo "::notice::This PR touches a gated path, so a human merges it."
+
+  disarm:
+    name: Disarm auto-merge
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: write
+      pull-requests: write
+    # Not behind the kill switch: turning auto-merge off must always work.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'claude/') &&
+      (
+        (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'ready-to-merge')) ||
+        (github.event.action == 'unlabeled' && github.event.label.name == 'ready-to-merge')
+      )
+    steps:
+      - name: Disable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          # Tolerate only "auto-merge wasn't on" (e.g. the arm was withheld).
+          if ! gh pr merge --disable-auto "$PR_URL" 2>err.txt; then
+            cat err.txt
+            grep -qiE 'not enabled|no auto.?merge|does not have auto' err.txt || exit 1
+          fi
+          # A new commit makes the label stale; it's re-applied after re-checking.
+          if [ "$ACTION" = synchronize ]; then
+            gh pr edit "$PR_URL" --remove-label ready-to-merge
+          fi

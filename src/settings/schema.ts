@@ -268,16 +268,15 @@ export function buildSettingsSchema(version?: VersionInfo): SettingSchemaDesc[] 
   const schema: SettingSchemaDesc[] = [heading('compatibilityHeading', 'Compatibility')];
 
   if (version) {
-    schema.push({
-      key: 'detectedVersionStatus',
-      title: `● Active: ${VERSION_LABELS[version.active]}`,
-      description:
+    schema.push(
+      heading(
+        'detectedVersionStatus',
+        `● Active: ${VERSION_LABELS[version.active]}`,
         version.source === 'auto'
           ? `Auto-detected this graph as the ${version.active} app. Use the dropdown below to override.`
           : `Manually set to the ${version.active} app. Set the dropdown below to 'auto' to re-detect.`,
-      type: 'heading',
-      default: null,
-    });
+      ),
+    );
   }
 
   schema.push({

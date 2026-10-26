@@ -201,14 +201,17 @@ export function setupThemeObserver(onThemeChange: () => void): void {
   logseq.App?.onThemeModeChanged?.(schedule);
 
   // Attributes whose change may flip the accent: `class` (dark/light + skins) and
-  // the version's accent attribute (v2 `data-color`), if any.
-  const accentAttr = getPlatform().theme.accentAttr;
-  const watched = accentAttr ? ['class', accentAttr] : ['class'];
+  // the version's accent attribute (v2 `data-color`), if any. Resolved per
+  // mutation rather than once here: a `logseqVersion` override change re-detects
+  // the version without re-running this setup, so the watched set must follow
+  // the platform that is active when the mutation arrives.
+  const isWatched = (attr: string): boolean =>
+    attr === 'class' || attr === getPlatform().theme.accentAttr;
 
   // Re-inject when theme might change (class / accent-attr changes on html/body)
   const observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {
-      if (mutation.attributeName && watched.includes(mutation.attributeName)) {
+      if (mutation.attributeName && isWatched(mutation.attributeName)) {
         schedule();
         break;
       }

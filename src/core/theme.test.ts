@@ -358,6 +358,25 @@ describe('Theme Color Management', () => {
       document.documentElement.removeAttribute('data-color');
       setVersionForTest(null);
     });
+
+    it('picks up the accent attribute after a runtime version override to v2', async () => {
+      // index.ts handles a logseqVersion override change without re-running
+      // setupThemeObserver, so the watched attribute set must follow the active
+      // platform rather than the one resolved at setup.
+      setVersionForTest('v1');
+      const callback = vi.fn();
+
+      setupThemeObserver(callback);
+      setVersionForTest('v2');
+      document.documentElement.setAttribute('data-color', 'teal');
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(callback).toHaveBeenCalled();
+
+      document.documentElement.removeAttribute('data-color');
+      setVersionForTest(null);
+    });
   });
 
   describe('detectAccentWhenReady', () => {

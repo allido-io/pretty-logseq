@@ -1,4 +1,4 @@
-# Paths that need an owner's review before merging.
+# Changes to these paths request a review from their owner.
 # Everything else has no code owner.
 
 # CI, release, and Dependabot workflows

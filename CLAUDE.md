@@ -391,7 +391,7 @@ Manual testing in Logseq:
 
 `.github/workflows/ci.yml` runs on push/PR to `main`:
 - **Lint & Format** — `pnpm check:ci` + `pnpm typecheck`
-- **Test** — `pnpm test:coverage` (uploads to Codecov)
+- **Test** — `pnpm test:coverage` (fails below the coverage thresholds in `vitest.config.ts`)
 - **Build** — `pnpm build` (uploads `dist/` artifact)
 
 Releases are handled by `.github/workflows/release.yml`; Dependabot updates are

@@ -1,5 +1,5 @@
-import { cleanPropertyValue } from '../../../lib/api';
 import type { PageData } from '../../../types';
+import { cleanAllValues } from './helpers';
 
 export interface PopoverConfig {
   subtitleText: string | null;
@@ -103,6 +103,11 @@ export function resolveConfig(pageData: PageData): PopoverConfig {
   };
 }
 
+/** Every value of a (possibly multi-valued) property, comma-separated. */
+function joinValues(value: unknown): string {
+  return cleanAllValues(value).join(', ');
+}
+
 /**
  * Resolve subtitle text from page properties using a priority list.
  * Special case: `role` and `organization` combine as "Role at Org".
@@ -115,9 +120,9 @@ function resolveSubtitle(props: Record<string, unknown>): {
   for (const prop of SUBTITLE_PRIORITY) {
     if (prop === 'role') {
       // Special template: role + organization
-      const role = props.role ? cleanPropertyValue(props.role) : null;
+      const role = props.role ? joinValues(props.role) : null;
 
-      const org = props.organization ? cleanPropertyValue(props.organization) : null;
+      const org = props.organization ? joinValues(props.organization) : null;
 
       if (role && org) {
         return {
@@ -139,7 +144,7 @@ function resolveSubtitle(props: Record<string, unknown>): {
 
     const val = props[prop];
 
-    if (val) return { text: cleanPropertyValue(val), consumed: [prop] };
+    if (val) return { text: joinValues(val), consumed: [prop] };
   }
 
   return { text: null, consumed: [] };

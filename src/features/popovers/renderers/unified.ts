@@ -198,13 +198,13 @@ function buildTags(pageData: PageData, config: PopoverConfig): HTMLElement | nul
   const values: string[] = [];
   const { type, status, area } = pageData.properties;
 
-  if (type) values.push(cleanPropertyValue(type));
-  if (status) values.push(cleanPropertyValue(status));
-  if (area) values.push(cleanPropertyValue(area));
+  for (const val of [type, status, area]) {
+    if (val) values.push(...cleanAllValues(val));
+  }
 
   for (const prop of config.extraTags) {
     const val = pageData.properties[prop];
-    if (val) values.push(cleanPropertyValue(val));
+    if (val) values.push(...cleanAllValues(val));
   }
 
   return createTagPills(values);

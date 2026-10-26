@@ -154,13 +154,32 @@ export function createDetailRow(label: string, valueEl: HTMLElement): HTMLElemen
   return row;
 }
 
+const LINK_KEYS = new Set(['email', 'phone', 'url', 'repository']);
+
 /**
  * Render a property value with smart formatting based on the property name.
  * email → mailto link, phone → tel link, url/repository → external link,
- * rating → star display, everything else → plain text.
+ * rating → star display, everything else → plain text. Multi-valued text is
+ * comma-joined; multi-valued links render one link per value, since a joined
+ * string is not a valid mailto:/tel: target and extractUrl reads one entry.
  */
 export function renderPropertyValue(key: string, value: unknown): HTMLElement {
-  const cleaned = cleanPropertyValue(value);
+  if (LINK_KEYS.has(key) && Array.isArray(value) && value.length > 1) {
+    const container = document.createElement('span');
+    container.className = 'pretty-popover__detail-value';
+    value
+      .filter(v => cleanPropertyValue(v))
+      .forEach((v, i) => {
+        if (i > 0) container.append(', ');
+        container.appendChild(renderSingleValue(key, v));
+      });
+    return container;
+  }
+  return renderSingleValue(key, value);
+}
+
+function renderSingleValue(key: string, value: unknown): HTMLElement {
+  const cleaned = cleanAllValues(value).join(', ');
 
   switch (key) {
     case 'rating':

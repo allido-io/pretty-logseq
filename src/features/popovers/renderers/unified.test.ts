@@ -379,6 +379,83 @@ describe('renderPopover', () => {
     });
   });
 
+  describe('multi-valued properties', () => {
+    it('shows every author in the subtitle', () => {
+      const el = renderPopover(makePage('Page', { author: ['[[Alice]]', '[[Bob]]'] }));
+      expect(el.querySelector('.pretty-popover__subtitle')?.textContent).toBe('Alice, Bob');
+    });
+
+    it('shows every value of a detail property in its row', () => {
+      const el = renderPopover(makePage('Page', { location: ['[[NYC]]', '[[Paris]]'] }));
+      const value = el.querySelector('.pretty-popover__detail-value');
+      expect(value?.textContent).toBe('NYC, Paris');
+    });
+
+    it('renders one pill per value for type, status and area', () => {
+      const el = renderPopover(
+        makePage('Page', {
+          type: ['[[Book]]', '[[Reference]]'],
+          status: ['Active', 'Review'],
+          area: ['Eng'],
+        }),
+      );
+      const pills = [...el.querySelectorAll('.pretty-popover__properties .pretty-popover__tag')];
+      expect(pills.map(p => p.textContent)).toEqual([
+        'Book',
+        'Reference',
+        'Active',
+        'Review',
+        'Eng',
+      ]);
+    });
+
+    it('renders one pill per value for extra tag properties', () => {
+      const el = renderPopover(makePage('Page', { relationship: ['Friend', 'Colleague'] }));
+      const pills = [...el.querySelectorAll('.pretty-popover__properties .pretty-popover__tag')];
+      expect(pills.map(p => p.textContent)).toEqual(['Friend', 'Colleague']);
+    });
+
+    it('joins role and organization values', () => {
+      const el = renderPopover(makePage('Page', { role: ['Dev', 'Lead'], organization: 'Acme' }));
+      expect(el.querySelector('.pretty-popover__subtitle')?.textContent).toBe('Dev, Lead at Acme');
+    });
+
+    it('renders one mailto link per email', () => {
+      const el = renderPopover(makePage('Page', { email: ['a@x.com', 'b@y.com'] }));
+      const links = [...el.querySelectorAll<HTMLAnchorElement>('.pretty-popover__detail-link')];
+      expect(links.map(l => l.href)).toEqual(['mailto:a@x.com', 'mailto:b@y.com']);
+      expect(links.map(l => l.textContent)).toEqual(['a@x.com', 'b@y.com']);
+    });
+
+    it('renders one tel link per phone number', () => {
+      const el = renderPopover(makePage('Page', { phone: ['555-0100', '555-0199'] }));
+      const links = [...el.querySelectorAll<HTMLAnchorElement>('.pretty-popover__detail-link')];
+      expect(links.map(l => l.href)).toEqual(['tel:555-0100', 'tel:555-0199']);
+    });
+
+    it('renders one link per repository URL', () => {
+      const el = renderPopover(
+        makePage('Page', {
+          repository: ['https://github.com/a/one', 'https://github.com/b/two'],
+        }),
+      );
+      const links = [...el.querySelectorAll<HTMLAnchorElement>('.pretty-popover__detail-link')];
+      expect(links.map(l => l.href)).toEqual([
+        'https://github.com/a/one',
+        'https://github.com/b/two',
+      ]);
+    });
+
+    it('leaves one-element arrays and scalars unchanged', () => {
+      const arr = renderPopover(makePage('Page', { author: ['[[Alice]]'], type: ['Book'] }));
+      expect(arr.querySelector('.pretty-popover__subtitle')?.textContent).toBe('Alice');
+      expect(arr.querySelectorAll('.pretty-popover__tag').length).toBe(1);
+      const scalar = renderPopover(makePage('Page', { author: 'Alice', type: 'Book' }));
+      expect(scalar.querySelector('.pretty-popover__subtitle')?.textContent).toBe('Alice');
+      expect(scalar.querySelectorAll('.pretty-popover__tag').length).toBe(1);
+    });
+  });
+
   describe('section ordering', () => {
     it('renders sections in the correct order', () => {
       const el = renderPopover(

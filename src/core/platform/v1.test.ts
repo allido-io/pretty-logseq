@@ -76,6 +76,15 @@ describe('v1Platform', () => {
       });
     });
 
+    it('does not append a page that is already favorited (case-insensitive)', async () => {
+      vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Existing', 'Dup Page']);
+      vi.mocked(logseq.App.setCurrentGraphConfigs).mockClear();
+
+      await v1Platform.api.toggleFavorite('dup page', true);
+
+      expect(logseq.App.setCurrentGraphConfigs).not.toHaveBeenCalled();
+    });
+
     it('starts from an empty list when the config has no favorites', async () => {
       vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(null as unknown as string[]);
 

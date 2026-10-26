@@ -27,6 +27,8 @@ export const v1Platform: Platform = {
       // favorites first to preserve the other entries' original case.
       const current = (await logseq.App.getCurrentGraphFavorites()) || [];
       const lower = pageName.toLowerCase();
+      const present = current.some(name => name.toLowerCase() === lower);
+      if (shouldFavorite && present) return; // already favorited; don't duplicate
       const favorites = shouldFavorite
         ? [...current, pageName]
         : current.filter(name => name.toLowerCase() !== lower);

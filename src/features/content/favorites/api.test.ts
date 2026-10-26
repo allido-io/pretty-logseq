@@ -251,6 +251,46 @@ describe('toggleFavorite', () => {
   });
 });
 
+describe('toggleFavorite (stale cache)', () => {
+  beforeEach(() => {
+    clearFavoritesCache();
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockReset().mockResolvedValue(undefined);
+  });
+
+  it('v1: does not duplicate a page favorited natively since the last refresh', async () => {
+    // Cache is empty/stale, but the graph already lists the page.
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Native Fav']);
+
+    await toggleFavorite('Native Fav');
+
+    // The real state wins: the click unfavorites instead of appending a duplicate.
+    expect(logseq.App.setCurrentGraphConfigs).toHaveBeenCalledWith({ favorites: [] });
+    expect(isFavorited('Native Fav')).toBe(false);
+  });
+
+  it('v1: recovers from an emptied cache after a failed refresh', async () => {
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockRejectedValueOnce(new Error('boom'));
+    await refreshFavorites();
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Kept', 'Target']);
+
+    await toggleFavorite('Target');
+
+    expect(logseq.App.setCurrentGraphConfigs).toHaveBeenCalledWith({ favorites: ['Kept'] });
+    expect(isFavorited('Target')).toBe(false);
+  });
+
+  it('falls back to the cache when the real-state read fails', async () => {
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Cached']);
+    await refreshFavorites();
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockRejectedValue(new Error('read failed'));
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockClear();
+
+    // The v1 adapter's own read also fails, so the write is rejected and rolled back.
+    await expect(toggleFavorite('Cached')).rejects.toThrow('read failed');
+    expect(isFavorited('Cached')).toBe(true);
+  });
+});
+
 describe('toggleFavorite (v2 DB graph)', () => {
   beforeEach(() => {
     clearFavoritesCache();
@@ -300,6 +340,75 @@ describe('toggleFavorite (v2 DB graph)', () => {
     await expect(toggleFavorite('Existing Page')).rejects.toThrow('command failed');
     // Optimistic removal is rolled back so the star stays in sync with reality.
     expect(isFavorited('Existing Page')).toBe(true);
+  });
+
+  it('never inverts the toggle when the cache is stale', async () => {
+    // Favorited natively; cache still says "not favorited".
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Native Fav'] as string[]);
+    vi.mocked(logseq.App.invokeExternalCommand).mockResolvedValue(undefined);
+
+    await toggleFavorite('Native Fav');
+
+    // Real state is favorited, so the click means "unfavorite": one toggle, cache agrees.
+    expect(logseq.App.invokeExternalCommand).toHaveBeenCalledTimes(1);
+    expect(isFavorited('Native Fav')).toBe(false);
+  });
+});
+
+describe('toggleFavorite (overlapping clicks)', () => {
+  // A graph whose favorites list reflects every write, so overlapping toggles race
+  // on real state the way they do in Logseq.
+  let store: string[];
+
+  beforeEach(() => {
+    clearFavoritesCache();
+    store = [];
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockImplementation(async () => [...store]);
+  });
+
+  afterEach(() => {
+    setVersionForTest(null);
+  });
+
+  it('v1: a double-click on one page ends back where it started', async () => {
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockImplementation(async configs => {
+      store = (configs as { favorites: string[] }).favorites;
+    });
+
+    await Promise.all([toggleFavorite('Page'), toggleFavorite('Page')]);
+
+    expect(store).toEqual([]);
+    expect(isFavorited('Page')).toBe(false);
+  });
+
+  it('v2: a double-click toggles twice and the star matches the graph', async () => {
+    setVersionForTest('v2');
+    vi.mocked(logseq.App.invokeExternalCommand).mockImplementation(async () => {
+      store = store.length ? [] : ['Page'];
+    });
+
+    await Promise.all([toggleFavorite('Page'), toggleFavorite('Page')]);
+
+    expect(logseq.App.invokeExternalCommand).toHaveBeenCalledTimes(2);
+    expect(store).toEqual([]);
+    expect(isFavorited('Page')).toBe(false);
+  });
+
+  it('a failed click does not block the next click on the same page', async () => {
+    vi.mocked(logseq.App.setCurrentGraphConfigs)
+      .mockRejectedValueOnce(new Error('write failed'))
+      .mockImplementation(async configs => {
+        store = (configs as { favorites: string[] }).favorites;
+      });
+
+    const first = toggleFavorite('Page');
+    const second = toggleFavorite('Page');
+
+    await expect(first).rejects.toThrow('write failed');
+    await second;
+    // First click failed (still unfavorited), so the second click favorites.
+    expect(store).toEqual(['Page']);
+    expect(isFavorited('Page')).toBe(true);
   });
 });
 

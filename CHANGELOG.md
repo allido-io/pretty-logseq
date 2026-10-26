@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.5](https://github.com/allido-io/pretty-logseq/compare/v2.0.4...v2.0.5) (2026-10-26)
+
+
+### Bug Fixes
+
+* **core:** make registry destroy wait for a pending feature init ([#115](https://github.com/allido-io/pretty-logseq/issues/115)) ([5fca0da](https://github.com/allido-io/pretty-logseq/commit/5fca0daa8d233a46173a189da029593a03438195))
+* **links:** treat an empty link-metadata proxy response as a failure ([#119](https://github.com/allido-io/pretty-logseq/issues/119)) ([807ab28](https://github.com/allido-io/pretty-logseq/commit/807ab28e2732f6ac4ab364c41f89b1c5b9849933))
+* **popovers:** only allow http(s) URLs from markdown-wrapped property values ([#122](https://github.com/allido-io/pretty-logseq/issues/122)) ([68eb845](https://github.com/allido-io/pretty-logseq/commit/68eb845f4a93c87df2dcaf698453258c9eaa571e))
+* **popovers:** show every value of multi-valued properties ([#120](https://github.com/allido-io/pretty-logseq/issues/120)) ([66fee1b](https://github.com/allido-io/pretty-logseq/commit/66fee1b863a028d1f7f17acf52eb626e6f05a7df))
+* **typography:** keep headings bold when Pretty Typography is off ([#121](https://github.com/allido-io/pretty-logseq/issues/121)) ([666812e](https://github.com/allido-io/pretty-logseq/commit/666812e161aa90a2786c037b8fb806fce78e29b8))
+
 ## [2.0.4](https://github.com/allido-io/pretty-logseq/compare/v2.0.3...v2.0.4) (2026-10-26)
 
 

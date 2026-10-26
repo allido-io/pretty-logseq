@@ -3,17 +3,21 @@ import { buildSettingsSchema, defaultSettings, type PluginSettings } from './sch
 export type { PluginSettings, VersionInfo } from './schema';
 export { buildSettingsSchema, defaultSettings };
 
+/** Raw shape Logseq hands us: our keys, plus internals like `disabled`. */
+type RawSettings = Partial<PluginSettings> & { disabled?: boolean };
+
+/**
+ * Turn a raw Logseq settings object into a complete `PluginSettings`: drop
+ * Logseq's internal `disabled` flag and fill every missing key from
+ * `defaultSettings`. Tolerates `null`/`undefined`.
+ */
+function normalizeSettings(raw: unknown): PluginSettings {
+  const { disabled: _disabled, ...userSettings } = (raw as RawSettings | null | undefined) || {};
+  return { ...defaultSettings, ...userSettings };
+}
+
 export function getSettings(): PluginSettings {
-  const settings = logseq.settings as
-    | (Partial<PluginSettings> & { disabled?: boolean })
-    | undefined;
-
-  const { disabled, ...userSettings } = settings || {};
-
-  return {
-    ...defaultSettings,
-    ...userSettings,
-  };
+  return normalizeSettings(logseq.settings);
 }
 
 export function initSettings(): void {
@@ -26,15 +30,6 @@ export function onSettingsChanged(
   callback: (newSettings: PluginSettings, oldSettings: PluginSettings) => void,
 ): void {
   logseq.onSettingsChanged((newSettings, oldSettings) => {
-    // Filter out Logseq internal properties (like 'disabled')
-    const { disabled: _newDisabled, ...newUserSettings } =
-      (newSettings as Partial<PluginSettings> & { disabled?: boolean }) || {};
-    const { disabled: _oldDisabled, ...oldUserSettings } =
-      (oldSettings as Partial<PluginSettings> & { disabled?: boolean }) || {};
-
-    callback(
-      { ...defaultSettings, ...newUserSettings } as PluginSettings,
-      { ...defaultSettings, ...oldUserSettings } as PluginSettings,
-    );
+    callback(normalizeSettings(newSettings), normalizeSettings(oldSettings));
   });
 }

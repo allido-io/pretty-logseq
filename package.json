@@ -21,15 +21,15 @@
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
     "@logseq/libs": "^0.0.17",
-    "@testing-library/dom": "^10.4.1",
-    "@vitest/coverage-v8": "^4.1.11",
-    "@vitest/ui": "^4.1.11",
-    "jsdom": "^30.0.1",
+    "@testing-library/dom": "^10.4.2",
+    "@vitest/coverage-v8": "^5.0.5",
+    "@vitest/ui": "^5.0.5",
+    "jsdom": "^30.1.3",
     "sass": "^1.106.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vite-plugin-logseq": "^1.1.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.5"
   },
   "keywords": [
     "logseq",

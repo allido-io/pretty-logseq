@@ -9,6 +9,31 @@ const RESOLVED_ATTR = 'data-pl-icon-resolved';
 // failing is retried a few times, then left resolved instead of re-queried forever.
 const MAX_LOOKUP_ATTEMPTS = 3;
 const failedLookups = new Map<string, number>();
+// Keys with the same name (e.g. a page open in both main and sidebar) share one
+// lookup, so a single failure is counted and logged once, not once per element.
+const pendingLookups = new Map<string, Promise<PageData | null>>();
+
+function lookupPage(keyName: string): Promise<PageData | null> {
+  const pending = pendingLookups.get(keyName);
+  if (pending) return pending;
+
+  const lookup = getPlatform()
+    .api.getPageData(keyName, { throwOnError: true })
+    .then(
+      page => {
+        failedLookups.delete(keyName);
+        return page;
+      },
+      err => {
+        failedLookups.set(keyName, (failedLookups.get(keyName) ?? 0) + 1);
+        console.error(`[Pretty Logseq] Property icon lookup failed for "${keyName}":`, err);
+        throw err;
+      },
+    )
+    .finally(() => pendingLookups.delete(keyName));
+  pendingLookups.set(keyName, lookup);
+  return lookup;
+}
 
 async function processPropertyKey(keyEl: Element): Promise<void> {
   if (keyEl.hasAttribute(RESOLVED_ATTR)) return;
@@ -16,16 +41,14 @@ async function processPropertyKey(keyEl: Element): Promise<void> {
 
   const keyName = keyEl.textContent?.trim();
   if (!keyName) return;
+  if ((failedLookups.get(keyName) ?? 0) >= MAX_LOOKUP_ATTEMPTS) return;
 
   let page: PageData | null;
   try {
-    page = await getPlatform().api.getPageData(keyName, { throwOnError: true });
-  } catch (err) {
+    page = await lookupPage(keyName);
+  } catch {
     // Unmark so a later scan retries; a null result (no such page) stays marked.
-    const attempts = (failedLookups.get(keyName) ?? 0) + 1;
-    failedLookups.set(keyName, attempts);
-    if (attempts < MAX_LOOKUP_ATTEMPTS) keyEl.removeAttribute(RESOLVED_ATTR);
-    console.error(`[Pretty Logseq] Property icon lookup failed for "${keyName}":`, err);
+    keyEl.removeAttribute(RESOLVED_ATTR);
     return;
   }
   if (!page?.properties?.icon) return;

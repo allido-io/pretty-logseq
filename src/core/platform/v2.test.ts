@@ -2,28 +2,24 @@
  * Tests for the v2 (DB) platform adapter.
  *
  * Focuses on the parts v2 overrides on top of v1: the DB data-adapter wiring
- * (`api.getPageData`/`getPageBlocks`/`clearPageCache`), favorites normalization
+ * (`api.getPageData`/`getPageBlocks`), favorites normalization
  * (DB returns page *entities*, not name strings), the toggle-favorite command
  * route, and the accent theme config.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getPageV2, getPageBlocksV2, clearPageCacheV2, getThemeMode } = vi.hoisted(() => ({
+const { getPageV2, getPageBlocksV2 } = vi.hoisted(() => ({
   getPageV2: vi.fn(),
   getPageBlocksV2: vi.fn(),
-  clearPageCacheV2: vi.fn(),
-  getThemeMode: vi.fn(),
 }));
 
-vi.mock('../../lib/api.v2', () => ({ getPageV2, getPageBlocksV2, clearPageCacheV2 }));
+vi.mock('../../lib/api.v2', () => ({ getPageV2, getPageBlocksV2 }));
 
 // v1 (which v2 spreads) also imports from lib/api — provide every export it uses.
 vi.mock('../../lib/api', () => ({
-  getThemeMode,
   getPage: vi.fn(),
   getPageBlocks: vi.fn(),
-  clearPageCache: vi.fn(),
 }));
 
 import { v2Platform } from './v2';
@@ -75,16 +71,6 @@ describe('v2Platform', () => {
       const result = await v2Platform.api.getPageBlocks('Page');
       expect(getPageBlocksV2).toHaveBeenCalledWith('Page');
       expect(result).toEqual([{ content: 'b' }]);
-    });
-
-    it('routes clearPageCache through the v2 adapter', () => {
-      v2Platform.api.clearPageCache('Page');
-      expect(clearPageCacheV2).toHaveBeenCalledWith('Page');
-    });
-
-    it('reads the theme mode via lib/api', () => {
-      getThemeMode.mockReturnValue('dark');
-      expect(v2Platform.api.getThemeMode()).toBe('dark');
     });
   });
 

@@ -37,6 +37,8 @@ export function mockLogseqAPI() {
       setCurrentGraphConfigs: vi.fn().mockResolvedValue(undefined),
       invokeExternalCommand: vi.fn().mockResolvedValue(undefined),
       onRouteChanged: vi.fn(),
+      onThemeChanged: vi.fn(),
+      onThemeModeChanged: vi.fn(),
     },
 
     DB: {

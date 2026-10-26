@@ -60,7 +60,6 @@ describe('getPlatform', () => {
     // Data access diverges — v2 normalizes the DB model to the shared shape.
     expect(v2.api.getPageData).not.toBe(v1.api.getPageData);
     expect(v2.api.getPageBlocks).not.toBe(v1.api.getPageBlocks);
-    expect(v2.api.clearPageCache).not.toBe(v1.api.clearPageCache);
 
     // Favorites diverge in both directions: v2 reads DB entities (not name
     // strings) and writes via the toggle command (not the graph config).

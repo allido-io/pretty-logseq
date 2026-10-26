@@ -1,5 +1,6 @@
 import type { BlockData, PageData, PageProperties } from '../types';
 import { getPageBlocks } from './api';
+import { TtlCache } from './cache';
 
 /**
  * Logseq v2 (DB graph) data layer.
@@ -25,14 +26,9 @@ import { getPageBlocks } from './api';
  * v1 (`./api`) is intentionally left untouched — this is purely additive.
  */
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-// Separate cache from the v1 layer so the two never collide across a version switch.
-const pageCache = new Map<string, CacheEntry<PageData>>();
+// Separate cache instance from the v1 layer so the two never collide across a version switch.
 const CACHE_TTL = 30000; // 30 seconds — matches the v1 layer
+const pageCache = new TtlCache<PageData>(CACHE_TTL);
 
 /**
  * Non-property entity attributes that must never become detail rows/tags. These
@@ -74,9 +70,7 @@ export async function getPageV2(
 
   if (useCache) {
     const cached = pageCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return cached.data;
-    }
+    if (cached !== undefined) return cached;
   }
 
   try {
@@ -87,7 +81,7 @@ export async function getPageV2(
     const properties = await normalizeProperties(entity);
 
     const pageData: PageData = { name, originalName: name, properties };
-    pageCache.set(cacheKey, { data: pageData, timestamp: Date.now() });
+    pageCache.set(cacheKey, pageData);
     return pageData;
   } catch (err) {
     console.error(`[Pretty Logseq] Failed to fetch v2 page "${pageName}":`, err);

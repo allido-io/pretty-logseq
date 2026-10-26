@@ -183,24 +183,36 @@ export function detectAccentWhenReady(onReady: () => void): void {
 export function setupThemeObserver(onThemeChange: () => void): void {
   const doc = getParentDoc();
 
+  // One theme switch produces several signals within a few ms (html + body
+  // class flips, the accent attribute, and both Logseq hooks). Each refresh
+  // re-probes the DOM and re-injects the whole stylesheet, so coalesce them
+  // into a single trailing-edge call 100ms after the last signal.
+  let pending: ReturnType<typeof setTimeout> | undefined;
+  const schedule = (): void => {
+    clearTimeout(pending);
+    pending = setTimeout(onThemeChange, 100);
+  };
+
   // Logseq's own theme/mode change events are the reliable signal for a *live*
   // theme switch — those don't always flip a watched attribute on html/body, so
   // the MutationObserver below can miss them. Guarded so tests (and any host
   // lacking the hook) don't break.
-  logseq.App?.onThemeChanged?.(() => setTimeout(onThemeChange, 100));
-  logseq.App?.onThemeModeChanged?.(() => setTimeout(onThemeChange, 100));
+  logseq.App?.onThemeChanged?.(schedule);
+  logseq.App?.onThemeModeChanged?.(schedule);
 
   // Attributes whose change may flip the accent: `class` (dark/light + skins) and
-  // the version's accent attribute (v2 `data-color`), if any.
-  const accentAttr = getPlatform().theme.accentAttr;
-  const watched = accentAttr ? ['class', accentAttr] : ['class'];
+  // the version's accent attribute (v2 `data-color`), if any. Resolved per
+  // mutation rather than once here: a `logseqVersion` override change re-detects
+  // the version without re-running this setup, so the watched set must follow
+  // the platform that is active when the mutation arrives.
+  const isWatched = (attr: string): boolean =>
+    attr === 'class' || attr === getPlatform().theme.accentAttr;
 
   // Re-inject when theme might change (class / accent-attr changes on html/body)
   const observer = new MutationObserver(mutations => {
     for (const mutation of mutations) {
-      if (mutation.attributeName && watched.includes(mutation.attributeName)) {
-        // Debounce to avoid multiple rapid updates
-        setTimeout(onThemeChange, 100);
+      if (mutation.attributeName && isWatched(mutation.attributeName)) {
+        schedule();
         break;
       }
     }

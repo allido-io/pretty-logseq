@@ -1,15 +1,12 @@
+import { TtlCache } from '../../lib/cache';
 import { getFaviconUrl } from './favicons';
 import type { LinkMetadata } from './types';
 
-interface CacheEntry {
-  data: LinkMetadata;
-  timestamp: number;
-}
-
-const metadataCache = new Map<string, CacheEntry>();
-const failedUrls = new Map<string, number>();
 const CACHE_TTL = 300_000; // 5 minutes
 const FAILED_TTL = 60_000; // 1 minute retry
+const metadataCache = new TtlCache<LinkMetadata>(CACHE_TTL);
+/** URLs whose last fetch failed; present (and fresh) means "don't retry yet". */
+const failedUrls = new TtlCache<true>(FAILED_TTL);
 const FETCH_TIMEOUT = 5_000;
 
 function getMetaContent(doc: Document, selectors: string[]): string | null {
@@ -111,15 +108,10 @@ export function createFallbackMetadata(url: string): LinkMetadata {
 export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
   // Check cache
   const cached = metadataCache.get(url);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
+  if (cached !== undefined) return cached;
 
   // Check failed URLs
-  const failedAt = failedUrls.get(url);
-  if (failedAt && Date.now() - failedAt < FAILED_TTL) {
-    return null;
-  }
+  if (failedUrls.get(url)) return null;
 
   try {
     const controller = new AbortController();
@@ -137,7 +129,7 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
         ...createFallbackMetadata(url),
         error: `This page returned ${response.status} (${response.statusText})`,
       };
-      metadataCache.set(url, { data: metadata, timestamp: Date.now() });
+      metadataCache.set(url, metadata);
       return metadata;
     }
 
@@ -175,12 +167,12 @@ export async function fetchMetadata(url: string): Promise<LinkMetadata | null> {
       siteName,
     };
 
-    metadataCache.set(url, { data: metadata, timestamp: Date.now() });
+    metadataCache.set(url, metadata);
     failedUrls.delete(url);
     return metadata;
   } catch (err) {
     console.error(`[Pretty Logseq] Failed to fetch metadata for "${url}":`, err);
-    failedUrls.set(url, Date.now());
+    failedUrls.set(url, true);
     return null;
   }
 }

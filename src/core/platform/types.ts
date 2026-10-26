@@ -1,4 +1,4 @@
-import type { BlockData, PageData, ThemeMode } from '../../types';
+import type { BlockData, PageData } from '../../types';
 import type { LogseqVersion } from '../version';
 
 /**
@@ -30,8 +30,6 @@ export interface PlatformSelectors {
 export interface PlatformApi {
   getPageData(name: string, options?: { useCache?: boolean }): Promise<PageData | null>;
   getPageBlocks(name: string): Promise<BlockData[]>;
-  getThemeMode(): Promise<ThemeMode>;
-  clearPageCache(name?: string): void;
   getFavorites(): Promise<string[]>;
   /**
    * Favorite or unfavorite `pageName`. The write mechanism differs by edition, so

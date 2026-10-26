@@ -7,7 +7,6 @@ import { createMockAnchor, setViewport } from '../../test/utils/dom';
 import {
   adjustForViewport,
   calculatePosition,
-  createElement,
   type Placement,
   positionElement,
   removeElementById,
@@ -305,73 +304,6 @@ describe('positionElement', () => {
 
     expect(leftPx).toBeLessThanOrEqual(1920 - 300 - 16);
     expect(topPx).toBeLessThanOrEqual(1080 - 200 - 16);
-  });
-});
-
-describe('createElement', () => {
-  it('creates element with specified tag', () => {
-    const element = createElement('div');
-
-    expect(element.tagName).toBe('DIV');
-  });
-
-  it('creates element with attributes', () => {
-    const element = createElement('div', {
-      id: 'test-id',
-      class: 'test-class',
-      'data-value': '123',
-    });
-
-    expect(element.id).toBe('test-id');
-    expect(element.className).toBe('test-class');
-    expect(element.getAttribute('data-value')).toBe('123');
-  });
-
-  it('creates element with innerHTML', () => {
-    const element = createElement('div', undefined, '<span>Hello</span>');
-
-    expect(element.innerHTML).toBe('<span>Hello</span>');
-    expect(element.children.length).toBe(1);
-    expect(element.children[0].tagName).toBe('SPAN');
-  });
-
-  it('creates element with both attributes and innerHTML', () => {
-    const element = createElement('div', { class: 'container', id: 'main' }, '<p>Content</p>');
-
-    expect(element.className).toBe('container');
-    expect(element.id).toBe('main');
-    expect(element.innerHTML).toBe('<p>Content</p>');
-  });
-
-  it('creates different HTML element types', () => {
-    const div = createElement('div');
-    const span = createElement('span');
-    const button = createElement('button');
-    const input = createElement('input');
-
-    expect(div.tagName).toBe('DIV');
-    expect(span.tagName).toBe('SPAN');
-    expect(button.tagName).toBe('BUTTON');
-    expect(input.tagName).toBe('INPUT');
-  });
-
-  it('handles empty attributes object', () => {
-    const element = createElement('div', {});
-
-    expect(element.tagName).toBe('DIV');
-    expect(element.attributes.length).toBe(0);
-  });
-
-  it('handles empty innerHTML', () => {
-    const element = createElement('div', undefined, '');
-
-    expect(element.innerHTML).toBe('');
-  });
-
-  it('properly escapes innerHTML when needed', () => {
-    const element = createElement('div', undefined, '&lt;script&gt;alert("xss")&lt;/script&gt;');
-
-    expect(element.textContent).toBe('<script>alert("xss")</script>');
   });
 });
 

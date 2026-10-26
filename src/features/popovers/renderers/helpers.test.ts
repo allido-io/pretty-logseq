@@ -395,7 +395,7 @@ describe('extractSnippet', () => {
     const snippet = extractSnippet(page, 50);
     expect(snippet).not.toBeNull();
     expect(snippet).toHaveLength(1);
-    const text = snippet?.[0].text;
+    const text = snippet?.[0].text ?? '';
     expect(text.length).toBeLessThanOrEqual(51); // 50 + ellipsis char
     expect(text.endsWith('\u2026')).toBe(true);
   });

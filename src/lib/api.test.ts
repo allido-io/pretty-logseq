@@ -2,7 +2,8 @@
  * Tests for Logseq API Helpers
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { partialMock } from '../../test/mocks/logseq';
 import {
   cleanBlockContent,
   cleanPropertyValue,
@@ -23,7 +24,7 @@ describe('getPage', () => {
       originalName: 'Test Page',
       properties: { type: 'Note', status: 'Active' },
     };
-    logseq.Editor.getPage.mockResolvedValue(mockPage);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(mockPage);
 
     const result = await getPage('test-page');
 
@@ -37,7 +38,7 @@ describe('getPage', () => {
 
   it('uses cache on subsequent calls within TTL', async () => {
     const mockPage = { name: 'cached-page', properties: {} };
-    logseq.Editor.getPage.mockResolvedValue(mockPage);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(mockPage);
 
     // First call
     await getPage('cached-page');
@@ -49,7 +50,7 @@ describe('getPage', () => {
 
   it('bypasses cache when useCache is false', async () => {
     const mockPage = { name: 'no-cache', properties: {} };
-    logseq.Editor.getPage.mockResolvedValue(mockPage);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(mockPage);
 
     await getPage('no-cache');
     await getPage('no-cache', { useCache: false });
@@ -59,7 +60,7 @@ describe('getPage', () => {
 
   it('handles case-insensitive cache keys', async () => {
     const mockPage = { name: 'Case Test', properties: {} };
-    logseq.Editor.getPage.mockResolvedValue(mockPage);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(mockPage);
 
     await getPage('Case Test');
     await getPage('case test'); // Different case
@@ -69,7 +70,7 @@ describe('getPage', () => {
   });
 
   it('returns null when page does not exist', async () => {
-    logseq.Editor.getPage.mockResolvedValue(null);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(null);
 
     const result = await getPage('non-existent');
 
@@ -77,7 +78,7 @@ describe('getPage', () => {
   });
 
   it('handles API errors gracefully', async () => {
-    logseq.Editor.getPage.mockRejectedValue(new Error('API Error'));
+    partialMock(logseq.Editor.getPage).mockRejectedValue(new Error('API Error'));
 
     const result = await getPage('error-page');
 
@@ -90,7 +91,7 @@ describe('getPage', () => {
       originalName: 'Lower Case',
       properties: {},
     };
-    logseq.Editor.getPage.mockResolvedValue(mockPage);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(mockPage);
 
     const result = await getPage('lower-case');
 
@@ -103,7 +104,7 @@ describe('getPage', () => {
       name: 'page-name',
       properties: {},
     };
-    logseq.Editor.getPage.mockResolvedValue(mockPage);
+    partialMock(logseq.Editor.getPage).mockResolvedValue(mockPage);
 
     const result = await getPage('page-name');
 
@@ -113,14 +114,14 @@ describe('getPage', () => {
 
   it('resolves alias when page has no properties', async () => {
     // First call returns a page with no properties (alias stub)
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'alias-page',
       originalName: 'Alias Page',
       properties: {},
     });
 
     // Datascript query returns the root page
-    logseq.DB.datascriptQuery.mockResolvedValue([
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([
       [
         {
           name: 'root-page',
@@ -137,42 +138,42 @@ describe('getPage', () => {
   });
 
   it('passes the lowercased alias name to the query as an EDN string', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'alias page',
       originalName: 'Alias Page',
       properties: {},
     });
-    logseq.DB.datascriptQuery.mockResolvedValue(null);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue(null);
 
     await getPage('Alias Page');
 
-    const [, input] = logseq.DB.datascriptQuery.mock.calls[0];
+    const [, input] = vi.mocked(logseq.DB.datascriptQuery).mock.calls[0];
     expect(input).toBe('"alias page"');
   });
 
   it('escapes quotes and backslashes in the alias name so the EDN string stays well-formed', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'say "hi" c:\\temp',
       originalName: 'Say "Hi" C:\\Temp',
       properties: {},
     });
-    logseq.DB.datascriptQuery.mockResolvedValue(null);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue(null);
 
     await getPage('Say "Hi" C:\\Temp');
 
-    const [, input] = logseq.DB.datascriptQuery.mock.calls[0];
+    const [, input] = vi.mocked(logseq.DB.datascriptQuery).mock.calls[0];
     // JSON string escapes are a subset of EDN string escapes.
     expect(input).toBe('"say \\"hi\\" c:\\\\temp"');
   });
 
   it('returns original page when alias resolution finds nothing', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'no-alias',
       originalName: 'No Alias',
       properties: {},
     });
 
-    logseq.DB.datascriptQuery.mockResolvedValue(null);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue(null);
 
     const result = await getPage('no-alias');
 
@@ -181,13 +182,13 @@ describe('getPage', () => {
   });
 
   it('returns original page when alias resolution returns empty results', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'empty-alias',
       originalName: 'Empty Alias',
       properties: {},
     });
 
-    logseq.DB.datascriptQuery.mockResolvedValue([]);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([]);
 
     const result = await getPage('empty-alias');
 
@@ -195,13 +196,13 @@ describe('getPage', () => {
   });
 
   it('returns original page when alias resolution returns null page', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'null-alias',
       originalName: 'Null Alias',
       properties: {},
     });
 
-    logseq.DB.datascriptQuery.mockResolvedValue([[null]]);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([[null]]);
 
     const result = await getPage('null-alias');
 
@@ -209,13 +210,13 @@ describe('getPage', () => {
   });
 
   it('handles alias resolution errors gracefully', async () => {
-    logseq.Editor.getPage.mockResolvedValue({
+    partialMock(logseq.Editor.getPage).mockResolvedValue({
       name: 'error-alias',
       originalName: 'Error Alias',
       properties: {},
     });
 
-    logseq.DB.datascriptQuery.mockRejectedValue(new Error('Query failed'));
+    vi.mocked(logseq.DB.datascriptQuery).mockRejectedValue(new Error('Query failed'));
 
     const result = await getPage('error-alias');
 
@@ -226,7 +227,7 @@ describe('getPage', () => {
 
 describe('clearPageCache', () => {
   beforeEach(() => {
-    logseq.Editor.getPage.mockResolvedValue({ name: 'test', properties: {} });
+    partialMock(logseq.Editor.getPage).mockResolvedValue({ name: 'test', properties: {} });
   });
 
   it('clears cache for a specific page', async () => {
@@ -245,12 +246,12 @@ describe('clearPageCache', () => {
     // Fetch both pages (will be cached)
     await getPage('page1');
     await getPage('page2');
-    const callsAfterInitial = logseq.Editor.getPage.mock.calls.length;
+    const callsAfterInitial = partialMock(logseq.Editor.getPage).mock.calls.length;
 
     // Verify they're cached
     await getPage('page1');
     await getPage('page2');
-    expect(logseq.Editor.getPage.mock.calls.length).toBe(callsAfterInitial); // No new calls
+    expect(partialMock(logseq.Editor.getPage).mock.calls.length).toBe(callsAfterInitial); // No new calls
 
     // Clear all cache
     clearPageCache();
@@ -258,7 +259,7 @@ describe('clearPageCache', () => {
     // Should fetch again
     await getPage('page1');
     await getPage('page2');
-    expect(logseq.Editor.getPage.mock.calls.length).toBe(callsAfterInitial + 2); // 2 new calls
+    expect(partialMock(logseq.Editor.getPage).mock.calls.length).toBe(callsAfterInitial + 2); // 2 new calls
   });
 
   it('handles clearing non-existent cache entries', () => {
@@ -268,7 +269,7 @@ describe('clearPageCache', () => {
 
 describe('getThemeMode', () => {
   it('returns dark mode when configured', async () => {
-    logseq.App.getUserConfigs.mockResolvedValue({
+    partialMock(logseq.App.getUserConfigs).mockResolvedValue({
       preferredThemeMode: 'dark',
     });
 
@@ -278,7 +279,7 @@ describe('getThemeMode', () => {
   });
 
   it('returns light mode when configured', async () => {
-    logseq.App.getUserConfigs.mockResolvedValue({
+    partialMock(logseq.App.getUserConfigs).mockResolvedValue({
       preferredThemeMode: 'light',
     });
 
@@ -288,7 +289,7 @@ describe('getThemeMode', () => {
   });
 
   it('defaults to light mode on error', async () => {
-    logseq.App.getUserConfigs.mockRejectedValue(new Error('Config error'));
+    partialMock(logseq.App.getUserConfigs).mockRejectedValue(new Error('Config error'));
 
     const result = await getThemeMode();
 
@@ -296,7 +297,7 @@ describe('getThemeMode', () => {
   });
 
   it('defaults to light for unexpected theme values', async () => {
-    logseq.App.getUserConfigs.mockResolvedValue({
+    partialMock(logseq.App.getUserConfigs).mockResolvedValue({
       preferredThemeMode: 'auto',
     });
 
@@ -319,7 +320,7 @@ describe('getPageBlocks', () => {
         ],
       },
     ];
-    logseq.Editor.getPageBlocksTree.mockResolvedValue(mockBlocks);
+    partialMock(logseq.Editor.getPageBlocksTree).mockResolvedValue(mockBlocks);
 
     const result = await getPageBlocks('test-page');
 
@@ -337,7 +338,7 @@ describe('getPageBlocks', () => {
   });
 
   it('returns empty array when no blocks exist', async () => {
-    logseq.Editor.getPageBlocksTree.mockResolvedValue(null);
+    partialMock(logseq.Editor.getPageBlocksTree).mockResolvedValue(null);
 
     const result = await getPageBlocks('empty-page');
 
@@ -345,7 +346,7 @@ describe('getPageBlocks', () => {
   });
 
   it('handles API errors gracefully', async () => {
-    logseq.Editor.getPageBlocksTree.mockRejectedValue(new Error('Blocks error'));
+    partialMock(logseq.Editor.getPageBlocksTree).mockRejectedValue(new Error('Blocks error'));
 
     const result = await getPageBlocks('error-page');
 
@@ -359,7 +360,7 @@ describe('getPageBlocks', () => {
         children: [],
       },
     ];
-    logseq.Editor.getPageBlocksTree.mockResolvedValue(mockBlocks);
+    partialMock(logseq.Editor.getPageBlocksTree).mockResolvedValue(mockBlocks);
 
     const result = await getPageBlocks('test-page');
 

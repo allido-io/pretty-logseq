@@ -12,7 +12,11 @@ describe('refreshFavorites', () => {
   });
 
   it('loads favorites from Logseq API', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Page One', 'Page Two', 'Another Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
+      'Page One',
+      'Page Two',
+      'Another Page',
+    ]);
 
     await refreshFavorites();
 
@@ -23,7 +27,7 @@ describe('refreshFavorites', () => {
   });
 
   it('handles case-insensitive favorites', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Test Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Test Page']);
 
     await refreshFavorites();
 
@@ -34,7 +38,7 @@ describe('refreshFavorites', () => {
   });
 
   it('handles null favorites gracefully', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(null);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(null);
 
     await refreshFavorites();
 
@@ -42,7 +46,7 @@ describe('refreshFavorites', () => {
   });
 
   it('handles empty favorites list', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
 
     await refreshFavorites();
 
@@ -50,7 +54,7 @@ describe('refreshFavorites', () => {
   });
 
   it('handles API errors gracefully', async () => {
-    logseq.App.getCurrentGraphFavorites.mockRejectedValue(new Error('API Error'));
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockRejectedValue(new Error('API Error'));
 
     await refreshFavorites();
 
@@ -59,12 +63,12 @@ describe('refreshFavorites', () => {
 
   it('replaces existing cache on refresh', async () => {
     // First refresh
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Old Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Old Page']);
     await refreshFavorites();
     expect(isFavorited('Old Page')).toBe(true);
 
     // Second refresh with different data
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['New Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['New Page']);
     await refreshFavorites();
     expect(isFavorited('Old Page')).toBe(false);
     expect(isFavorited('New Page')).toBe(true);
@@ -74,7 +78,10 @@ describe('refreshFavorites', () => {
 describe('isFavorited', () => {
   beforeEach(async () => {
     clearFavoritesCache();
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Favorite One', 'Favorite Two']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
+      'Favorite One',
+      'Favorite Two',
+    ]);
     await refreshFavorites();
   });
 
@@ -103,13 +110,13 @@ describe('isFavorited', () => {
 describe('toggleFavorite', () => {
   beforeEach(async () => {
     clearFavoritesCache();
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Already Favorited']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Already Favorited']);
     await refreshFavorites();
   });
 
   it('adds a page to favorites', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Already Favorited']);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Already Favorited']);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     expect(isFavorited('New Page')).toBe(false);
 
@@ -122,8 +129,8 @@ describe('toggleFavorite', () => {
   });
 
   it('removes a page from favorites', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Already Favorited']);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Already Favorited']);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     expect(isFavorited('Already Favorited')).toBe(true);
 
@@ -136,8 +143,8 @@ describe('toggleFavorite', () => {
   });
 
   it('preserves original case when adding favorites', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     await toggleFavorite('My Cool Page');
 
@@ -148,12 +155,12 @@ describe('toggleFavorite', () => {
 
   it('is case-insensitive when removing favorites', async () => {
     // Initial setup and refresh
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Test Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Test Page']);
     await refreshFavorites();
 
     // Mock for the toggle call - returns the current state again
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Test Page']);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Test Page']);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     // Try to remove with different case
     await toggleFavorite('test page');
@@ -164,8 +171,8 @@ describe('toggleFavorite', () => {
   });
 
   it('optimistically updates cache', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Already Favorited']);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Already Favorited']);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     expect(isFavorited('New Page')).toBe(false);
 
@@ -177,8 +184,8 @@ describe('toggleFavorite', () => {
   });
 
   it('rolls back optimistic update on error when adding', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.App.setCurrentGraphConfigs.mockRejectedValue(new Error('Write failed'));
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockRejectedValue(new Error('Write failed'));
 
     expect(isFavorited('New Page')).toBe(false);
 
@@ -193,14 +200,14 @@ describe('toggleFavorite', () => {
 
   it('rolls back optimistic update on error when removing', async () => {
     // Initial setup and refresh
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Existing Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Existing Page']);
     await refreshFavorites();
 
     expect(isFavorited('Existing Page')).toBe(true);
 
     // Mock error on setCurrentGraphConfigs
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Existing Page']);
-    logseq.App.setCurrentGraphConfigs.mockRejectedValue(new Error('Write failed'));
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Existing Page']);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockRejectedValue(new Error('Write failed'));
 
     try {
       await toggleFavorite('Existing Page');
@@ -212,21 +219,29 @@ describe('toggleFavorite', () => {
   });
 
   it('rethrows errors after rollback', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
     const error = new Error('API Error');
-    logseq.App.setCurrentGraphConfigs.mockRejectedValue(error);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockRejectedValue(error);
 
     await expect(toggleFavorite('Test')).rejects.toThrow('API Error');
   });
 
   it('handles multiple pages with similar names', async () => {
     // Initial setup and refresh
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Test', 'Test Page', 'Test Page Two']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
+      'Test',
+      'Test Page',
+      'Test Page Two',
+    ]);
     await refreshFavorites();
 
     // Mock for toggle call
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Test', 'Test Page', 'Test Page Two']);
-    logseq.App.setCurrentGraphConfigs.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
+      'Test',
+      'Test Page',
+      'Test Page Two',
+    ]);
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockResolvedValue(undefined);
 
     await toggleFavorite('Test Page');
 
@@ -240,8 +255,8 @@ describe('toggleFavorite (v2 DB graph)', () => {
   beforeEach(() => {
     clearFavoritesCache();
     setVersionForTest('v2');
-    logseq.App.invokeExternalCommand.mockClear();
-    logseq.App.setCurrentGraphConfigs.mockClear();
+    vi.mocked(logseq.App.invokeExternalCommand).mockClear();
+    vi.mocked(logseq.App.setCurrentGraphConfigs).mockClear();
   });
 
   afterEach(() => {
@@ -250,7 +265,7 @@ describe('toggleFavorite (v2 DB graph)', () => {
 
   it('normalizes DB favorite entities to page names when refreshing', async () => {
     // DB `getCurrentGraphFavorites` returns page-block entities, not strings.
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([
       { name: 'project alpha', originalName: 'Project Alpha', uuid: 'uuid-1' },
       { name: 'daily notes', originalName: 'Daily Notes', uuid: 'uuid-2' },
     ] as unknown as string[]);
@@ -264,8 +279,8 @@ describe('toggleFavorite (v2 DB graph)', () => {
   });
 
   it('toggles via the built-in command instead of writing graph config', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue([]);
-    logseq.App.invokeExternalCommand.mockResolvedValue(undefined);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue([]);
+    vi.mocked(logseq.App.invokeExternalCommand).mockResolvedValue(undefined);
 
     await toggleFavorite('New Page');
 
@@ -276,11 +291,11 @@ describe('toggleFavorite (v2 DB graph)', () => {
   });
 
   it('unfavorites via the same command and rolls back the cache on failure', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Existing Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Existing Page']);
     await refreshFavorites();
     expect(isFavorited('Existing Page')).toBe(true);
 
-    logseq.App.invokeExternalCommand.mockRejectedValueOnce(new Error('command failed'));
+    vi.mocked(logseq.App.invokeExternalCommand).mockRejectedValueOnce(new Error('command failed'));
 
     await expect(toggleFavorite('Existing Page')).rejects.toThrow('command failed');
     // Optimistic removal is rolled back so the star stays in sync with reality.
@@ -290,7 +305,7 @@ describe('toggleFavorite (v2 DB graph)', () => {
 
 describe('clearFavoritesCache', () => {
   it('clears the favorites cache', async () => {
-    logseq.App.getCurrentGraphFavorites.mockResolvedValue(['Test Page']);
+    vi.mocked(logseq.App.getCurrentGraphFavorites).mockResolvedValue(['Test Page']);
     await refreshFavorites();
 
     expect(isFavorited('Test Page')).toBe(true);

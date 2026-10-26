@@ -113,22 +113,45 @@ const FEATURE_BINDINGS: FeatureBinding[] = [
   },
 ];
 
-function applyBinding(binding: FeatureBinding, settings: PluginSettings): void {
+async function applyBinding(binding: FeatureBinding, settings: PluginSettings): Promise<void> {
   if (binding.action === 'toggle' && binding.featureId && binding.enableKey) {
     if (settings[binding.enableKey]) {
-      registry.initializeFeature(binding.featureId);
+      await registry.initializeFeature(binding.featureId);
     } else {
       registry.destroyFeature(binding.featureId);
     }
   } else if (binding.action === 'reinit' && binding.featureId) {
     registry.destroyFeature(binding.featureId);
     if (!binding.enableKey || settings[binding.enableKey]) {
-      registry.initializeFeature(binding.featureId);
+      await registry.initializeFeature(binding.featureId);
     }
   }
 
   binding.onChange?.();
   refreshStyles();
+}
+
+async function handleSettingsChange(
+  newSettings: PluginSettings,
+  oldSettings: PluginSettings,
+): Promise<void> {
+  // Version override changed: everything can differ, so treat it as a full
+  // reload — re-detect, update the scope attribute, then destroy + re-init all.
+  if (newSettings.logseqVersion !== oldSettings.logseqVersion) {
+    await registry.destroyAll();
+    applyVersionAttribute(await detectVersion());
+    registerSchema();
+    await registry.initializeAll();
+    refreshStyles();
+    return;
+  }
+
+  // Data-driven dispatch: run each binding whose keys changed.
+  for (const binding of FEATURE_BINDINGS) {
+    if (binding.keys.some(key => newSettings[key] !== oldSettings[key])) {
+      await applyBinding(binding, newSettings);
+    }
+  }
 }
 
 /**
@@ -176,24 +199,17 @@ async function main(): Promise<void> {
 
   await registry.initializeAll();
 
-  onSettingsChanged(async (newSettings, oldSettings) => {
-    // Version override changed: everything can differ, so treat it as a full
-    // reload — re-detect, update the scope attribute, then destroy + re-init all.
-    if (newSettings.logseqVersion !== oldSettings.logseqVersion) {
-      await registry.destroyAll();
-      applyVersionAttribute(await detectVersion());
-      registerSchema();
-      await registry.initializeAll();
-      refreshStyles();
-      return;
-    }
-
-    // Data-driven dispatch: run each binding whose keys changed.
-    for (const binding of FEATURE_BINDINGS) {
-      if (binding.keys.some(key => newSettings[key] !== oldSettings[key])) {
-        applyBinding(binding, newSettings);
-      }
-    }
+  // Changes are applied one at a time, in arrival order. A feature's `init` can
+  // be async (content awaits a favorites fetch; a version change re-detects
+  // and re-inits everything), and the registry only marks a feature
+  // initialized once its init resolves — so a change landing mid-flight could
+  // find `destroyFeature` a no-op and leave the feature running after it was
+  // turned off. Chaining each change onto the previous one closes that window.
+  let pending: Promise<void> = Promise.resolve();
+  onSettingsChanged((newSettings, oldSettings) => {
+    pending = pending
+      .then(() => handleSettingsChange(newSettings, oldSettings))
+      .catch(err => console.error('[Pretty Logseq] Failed to apply settings change:', err));
   });
 
   console.log('[Pretty Logseq] Plugin loaded');

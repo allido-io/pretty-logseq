@@ -44,6 +44,9 @@ vi.mock('./features/topbar', async importOriginal => ({
 type RawSettings = Partial<PluginSettings> & { disabled?: boolean };
 type ChangeHandler = (next: RawSettings, prev: RawSettings) => void;
 
+/** Let queued settings work (promise chain + awaited inits) run to completion. */
+const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+
 /**
  * Import a fresh `src/index.ts`, wait for `main()` to register its settings
  * handler, and hand back that handler plus the mocked collaborators it drives.
@@ -61,9 +64,11 @@ async function boot(settings: Partial<PluginSettings> = {}) {
   await vi.waitFor(() => expect(logseq.onSettingsChanged).toHaveBeenCalledTimes(1));
   const handler = vi.mocked(logseq.onSettingsChanged).mock.calls[0][0] as ChangeHandler;
   // Logseq updates `logseq.settings` before firing the callback; mirror that.
-  const change: ChangeHandler = (next, prev) => {
+  // Changes are applied asynchronously (serialized), so wait for them to land.
+  const change = async (next: RawSettings, prev: RawSettings): Promise<void> => {
     logseq.settings = { ...logseq.settings, ...next } as typeof logseq.settings;
     handler(next, prev);
+    await flush();
   };
 
   // Startup itself calls these; clear so each test sees only what its change caused.
@@ -120,7 +125,7 @@ describe('settings-change dispatch', () => {
   it('does nothing when no setting changed', async () => {
     const { change, registry, refreshStyles } = await boot();
 
-    change({ enablePopovers: true }, { enablePopovers: true });
+    await change({ enablePopovers: true }, { enablePopovers: true });
 
     expect(registry.initializeFeature).not.toHaveBeenCalled();
     expect(registry.destroyFeature).not.toHaveBeenCalled();
@@ -131,7 +136,7 @@ describe('settings-change dispatch', () => {
     it('initializes the feature when its toggle turns on', async () => {
       const { change, registry, refreshStyles } = await boot();
 
-      change({ enablePopovers: true }, { enablePopovers: false });
+      await change({ enablePopovers: true }, { enablePopovers: false });
 
       expect(registry.initializeFeature).toHaveBeenCalledWith('popovers');
       expect(registry.destroyFeature).not.toHaveBeenCalled();
@@ -141,7 +146,7 @@ describe('settings-change dispatch', () => {
     it('destroys the feature when its toggle turns off', async () => {
       const { change, registry, refreshStyles } = await boot();
 
-      change({ enablePrettyLinks: false }, { enablePrettyLinks: true });
+      await change({ enablePrettyLinks: false }, { enablePrettyLinks: true });
 
       expect(registry.destroyFeature).toHaveBeenCalledWith('links');
       expect(registry.initializeFeature).not.toHaveBeenCalled();
@@ -156,10 +161,10 @@ describe('settings-change dispatch', () => {
     ] as const)('%s toggles the %s feature', async (key, featureId) => {
       const { change, registry } = await boot();
 
-      change({ [key]: false }, { [key]: true });
+      await change({ [key]: false }, { [key]: true });
       expect(registry.destroyFeature).toHaveBeenCalledWith(featureId);
 
-      change({ [key]: true }, { [key]: false });
+      await change({ [key]: true }, { [key]: false });
       expect(registry.initializeFeature).toHaveBeenCalledWith(featureId);
     });
   });
@@ -168,7 +173,7 @@ describe('settings-change dispatch', () => {
     it('destroys then re-initializes properties when a sub-setting changes and it is enabled', async () => {
       const { change, registry, refreshStyles } = await boot();
 
-      change(
+      await change(
         { enablePrettyProperties: true, showPropertyIcons: false },
         { enablePrettyProperties: true, showPropertyIcons: true },
       );
@@ -184,7 +189,7 @@ describe('settings-change dispatch', () => {
     it('only destroys properties when the gate setting turns off', async () => {
       const { change, registry } = await boot();
 
-      change({ enablePrettyProperties: false }, { enablePrettyProperties: true });
+      await change({ enablePrettyProperties: false }, { enablePrettyProperties: true });
 
       expect(registry.destroyFeature).toHaveBeenCalledWith('properties');
       expect(registry.initializeFeature).not.toHaveBeenCalled();
@@ -193,7 +198,7 @@ describe('settings-change dispatch', () => {
     it('rebuilds content when the favorite star toggles', async () => {
       const { change, registry } = await boot();
 
-      change({ enableFavoriteStar: false }, { enableFavoriteStar: true });
+      await change({ enableFavoriteStar: false }, { enableFavoriteStar: true });
 
       expect(registry.destroyFeature).toHaveBeenCalledWith('content');
       expect(registry.initializeFeature).toHaveBeenCalledWith('content');
@@ -202,7 +207,7 @@ describe('settings-change dispatch', () => {
     it('always rebuilds sidebar-tags, including when set to off', async () => {
       const { change, registry } = await boot();
 
-      change({ sidebarPageTags: 'off' }, { sidebarPageTags: 'subtle' });
+      await change({ sidebarPageTags: 'off' }, { sidebarPageTags: 'subtle' });
 
       expect(registry.destroyFeature).toHaveBeenCalledWith('sidebar-tags');
       expect(registry.initializeFeature).toHaveBeenCalledWith('sidebar-tags');
@@ -213,7 +218,7 @@ describe('settings-change dispatch', () => {
     it('only refreshes styles for a style-only setting', async () => {
       const { change, registry, refreshStyles } = await boot();
 
-      change({ topbarGradient: false }, { topbarGradient: true });
+      await change({ topbarGradient: false }, { topbarGradient: true });
 
       expect(refreshStyles).toHaveBeenCalledTimes(1);
       expect(registry.initializeFeature).not.toHaveBeenCalled();
@@ -223,7 +228,7 @@ describe('settings-change dispatch', () => {
     it('does not rebuild content when bullet threading toggles (style-only)', async () => {
       const { change, registry, refreshStyles } = await boot();
 
-      change({ enableBulletThreading: false }, { enableBulletThreading: true });
+      await change({ enableBulletThreading: false }, { enableBulletThreading: true });
 
       expect(refreshStyles).toHaveBeenCalledTimes(1);
       expect(registry.initializeFeature).not.toHaveBeenCalled();
@@ -233,7 +238,7 @@ describe('settings-change dispatch', () => {
     it('refreshes styles once when several style-only settings change together', async () => {
       const { change, refreshStyles } = await boot();
 
-      change(
+      await change(
         { topbarGradient: false, hideHomeButton: false, compactSidebarNav: false },
         { topbarGradient: true, hideHomeButton: true, compactSidebarNav: true },
       );
@@ -244,12 +249,53 @@ describe('settings-change dispatch', () => {
     it('repositions the nav arrows and refreshes styles when navArrowsLeft changes', async () => {
       const { change, registry, refreshStyles, applyNavArrowsSetting } = await boot();
 
-      change({ navArrowsLeft: false }, { navArrowsLeft: true });
+      await change({ navArrowsLeft: false }, { navArrowsLeft: true });
 
       expect(applyNavArrowsSetting).toHaveBeenCalledTimes(1);
       expect(refreshStyles).toHaveBeenCalledTimes(1);
       expect(registry.initializeFeature).not.toHaveBeenCalled();
       expect(registry.destroyFeature).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('serialization', () => {
+    it('applies a change that arrives mid-init only after the pending init resolves', async () => {
+      const { change, registry } = await boot();
+      let resolveInit: () => void = () => {};
+      vi.mocked(registry.initializeFeature).mockImplementationOnce(
+        () => new Promise<void>(resolve => (resolveInit = resolve)),
+      );
+
+      // Turn popovers on (init pending), then off while it's still pending.
+      const on = change({ enablePopovers: true }, { enablePopovers: false });
+      const off = change({ enablePopovers: false }, { enablePopovers: true });
+      await flush();
+
+      expect(registry.initializeFeature).toHaveBeenCalledWith('popovers');
+      expect(registry.destroyFeature).not.toHaveBeenCalled();
+
+      resolveInit();
+      await Promise.all([on, off]);
+      await flush();
+
+      expect(registry.destroyFeature).toHaveBeenCalledWith('popovers');
+      expect(vi.mocked(registry.initializeFeature).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(registry.destroyFeature).mock.invocationCallOrder[0],
+      );
+    });
+
+    it('keeps applying later changes after one fails', async () => {
+      const { change, registry, refreshStyles } = await boot();
+      vi.mocked(registry.initializeFeature).mockRejectedValueOnce(new Error('init exploded'));
+
+      await change({ enablePopovers: true }, { enablePopovers: false });
+      await change({ topbarGradient: false }, { topbarGradient: true });
+
+      expect(console.error).toHaveBeenCalledWith(
+        '[Pretty Logseq] Failed to apply settings change:',
+        expect.any(Error),
+      );
+      expect(refreshStyles).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -264,7 +310,7 @@ describe('settings-change dispatch', () => {
       const current = defaultSettings[key];
       const flipped = typeof current === 'boolean' ? !current : 'off';
 
-      change({ [key]: flipped }, { [key]: current });
+      await change({ [key]: flipped }, { [key]: current });
 
       expect(refreshStyles, `setting "${key}" has no binding`).toHaveBeenCalled();
     }
@@ -275,7 +321,7 @@ describe('settings-change dispatch', () => {
       const { change, registry, refreshStyles, getVersion } = await boot();
       vi.mocked(logseq.useSettingsSchema).mockClear();
 
-      change({ logseqVersion: 'v2' }, { logseqVersion: 'auto' });
+      await change({ logseqVersion: 'v2' }, { logseqVersion: 'auto' });
       await vi.waitFor(() => expect(registry.initializeAll).toHaveBeenCalledTimes(1));
 
       expect(registry.destroyAll).toHaveBeenCalledTimes(1);
@@ -294,7 +340,7 @@ describe('settings-change dispatch', () => {
     it('does not run per-feature bindings for keys changed alongside the version', async () => {
       const { change, registry } = await boot();
 
-      change(
+      await change(
         { logseqVersion: 'v1', enablePopovers: false },
         { logseqVersion: 'auto', enablePopovers: true },
       );

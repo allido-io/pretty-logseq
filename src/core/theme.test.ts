@@ -297,6 +297,37 @@ describe('Theme Color Management', () => {
       expect(callback).toHaveBeenCalled();
     });
 
+    it('coalesces a burst of attribute mutations and theme hooks into one refresh', async () => {
+      const callback = vi.fn();
+      vi.useFakeTimers();
+
+      setupThemeObserver(callback);
+      const onThemeChanged = logseq.App.onThemeChanged as unknown as ReturnType<typeof vi.fn>;
+      const onThemeModeChanged = logseq.App.onThemeModeChanged as unknown as ReturnType<
+        typeof vi.fn
+      >;
+      const themeHook = onThemeChanged.mock.calls[0][0] as () => void;
+      const modeHook = onThemeModeChanged.mock.calls[0][0] as () => void;
+
+      // A real theme switch flips html + body classes and fires both Logseq
+      // hooks within a few ms of each other.
+      document.documentElement.className = 'dark';
+      await vi.advanceTimersByTimeAsync(20);
+      document.body.className = 'dark-theme';
+      await vi.advanceTimersByTimeAsync(20);
+      themeHook();
+      modeHook();
+      await vi.advanceTimersByTimeAsync(20);
+
+      // Still inside the quiet window: nothing yet.
+      expect(callback).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(200);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
+
     it('does not call callback for non-class attribute changes', async () => {
       const callback = vi.fn();
       vi.useFakeTimers();

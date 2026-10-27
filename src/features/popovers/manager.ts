@@ -9,6 +9,8 @@ const HIDE_DELAY = 150;
 let showTimer: ReturnType<typeof setTimeout> | null = null;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let currentAnchor: HTMLElement | null = null;
+// The anchor whose popover is currently in the DOM (may lag currentAnchor during a fetch)
+let popoverAnchor: HTMLElement | null = null;
 let popoverListenersCleanup: (() => void) | null = null;
 
 function clearShowTimer(): void {
@@ -40,6 +42,7 @@ function hidePopover(): void {
   cleanupPopoverListeners();
   removeElementById(POPOVER_ID);
   currentAnchor = null;
+  popoverAnchor = null;
 }
 
 function scheduleHide(): void {
@@ -98,6 +101,7 @@ async function showPopover(anchor: HTMLElement, pageName: string): Promise<void>
   doc.body.appendChild(popover);
   positionElement(popover, anchor, { placement: 'bottom', offset: 8 });
   attachPopoverListeners(popover);
+  popoverAnchor = anchor;
 }
 
 function getPageNameFromRef(element: HTMLElement): string | null {
@@ -136,6 +140,9 @@ export function setupPopovers(): () => void {
       return;
     }
 
+    // A popover left over from another anchor no longer has a hover owning it
+    if (popoverAnchor && popoverAnchor !== pageRef) hidePopover();
+
     clearShowTimer();
     clearHideTimer();
     cleanupAnchorLeave();
@@ -144,7 +151,7 @@ export function setupPopovers(): () => void {
     // Attach mouseleave to this specific anchor
     const onAnchorLeave = () => {
       clearShowTimer();
-      if (getPopover()) scheduleHide();
+      if (popoverAnchor === pageRef && getPopover()) scheduleHide();
       else currentAnchor = null;
       anchorLeaveCleanup = null;
     };

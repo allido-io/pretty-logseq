@@ -364,6 +364,46 @@ describe('Popover Manager', () => {
     });
   });
 
+  describe('Popover Ownership', () => {
+    beforeEach(() => {
+      cleanup = setupPopovers();
+    });
+
+    async function showFor(ref: HTMLElement) {
+      ref.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      vi.advanceTimersByTime(300);
+      await vi.advanceTimersByTimeAsync(0);
+    }
+
+    it('removes anchor A popover when B resolves to no page data', async () => {
+      const refA = createPageRef('Page A');
+      const refB = createPageRef('Missing');
+      document.body.append(refA, refB);
+
+      await showFor(refA);
+      expect(document.getElementById('pretty-logseq-popover')).toBeTruthy();
+
+      getPageData.mockResolvedValue(null);
+      refA.dispatchEvent(new MouseEvent('mouseleave'));
+      await showFor(refB);
+      await vi.runAllTimersAsync();
+
+      expect(document.getElementById('pretty-logseq-popover')).toBeNull();
+    });
+
+    it("drops A's popover as soon as the pointer moves to B, before B's data arrives", async () => {
+      const refA = createPageRef('Page A');
+      const refB = createPageRef('Page B');
+      document.body.append(refA, refB);
+
+      await showFor(refA);
+      refA.dispatchEvent(new MouseEvent('mouseleave'));
+      refB.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+
+      expect(document.getElementById('pretty-logseq-popover')).toBeNull();
+    });
+  });
+
   describe('Cleanup', () => {
     it('removes popover on cleanup', async () => {
       cleanup = setupPopovers();

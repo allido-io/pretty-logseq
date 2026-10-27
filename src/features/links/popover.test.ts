@@ -284,6 +284,34 @@ describe('setupLinkPopovers', () => {
     expect(document.getElementById(POPOVER_ID)).not.toBeNull();
   });
 
+  it('hides after leave, re-enter within the hide delay, and a second leave', async () => {
+    vi.mocked(metadataModule.fetchMetadata).mockResolvedValue(makeMeta());
+    cleanup = setupLinkPopovers();
+
+    const link = createExternalLink();
+    const enter = () => {
+      const e = new MouseEvent('mouseenter', { bubbles: true });
+      Object.defineProperty(e, 'target', { value: link });
+      document.dispatchEvent(e);
+    };
+
+    enter();
+    vi.advanceTimersByTime(400);
+    await vi.runAllTimersAsync();
+    expect(document.getElementById(POPOVER_ID)).not.toBeNull();
+
+    link.dispatchEvent(new MouseEvent('mouseleave'));
+    vi.advanceTimersByTime(50);
+    enter();
+    vi.advanceTimersByTime(50);
+    expect(document.getElementById(POPOVER_ID)).not.toBeNull();
+
+    link.dispatchEvent(new MouseEvent('mouseleave'));
+    await vi.runAllTimersAsync();
+
+    expect(document.getElementById(POPOVER_ID)).toBeNull();
+  });
+
   it('mouseleave from anchor schedules hide when popover exists', async () => {
     vi.mocked(metadataModule.fetchMetadata).mockResolvedValue(makeMeta());
     cleanup = setupLinkPopovers();

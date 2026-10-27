@@ -78,10 +78,12 @@ export async function getPageV2(
     if (!entity) return null;
 
     const name = resolveName(entity, pageName);
-    const properties = await normalizeProperties(entity);
+    const { properties, degraded } = await normalizePropertiesChecked(entity);
 
     const pageData: PageData = { name, originalName: name, properties };
-    pageCache.set(cacheKey, pageData);
+    // A failed reference query leaves id-valued properties missing; don't cache
+    // that so the next read retries instead of serving it for the whole TTL.
+    if (!degraded) pageCache.set(cacheKey, pageData);
     return pageData;
   } catch (err) {
     if (throwOnError) throw err;
@@ -115,11 +117,19 @@ function resolveName(entity: Record<string, unknown>, fallback: string): string 
 export async function normalizeProperties(
   entity: Record<string, unknown>,
 ): Promise<PageProperties> {
+  return (await normalizePropertiesChecked(entity)).properties;
+}
+
+/** As `normalizeProperties`, also reporting whether the reference query failed. */
+async function normalizePropertiesChecked(
+  entity: Record<string, unknown>,
+): Promise<{ properties: PageProperties; degraded: boolean }> {
   const rawEntries = collectPropertyEntries(entity);
 
   const ids = new Set<number>();
   for (const [, value] of rawEntries) collectRefIds(value, ids);
-  const titles = ids.size > 0 ? await resolveRefTitles([...ids]) : new Map<number, string>();
+  const resolved = ids.size > 0 ? await resolveRefTitles([...ids]) : new Map<number, string>();
+  const titles = resolved ?? new Map<number, string>();
 
   const props: PageProperties = {};
   for (const [rawKey, rawValue] of rawEntries) {
@@ -128,7 +138,7 @@ export async function normalizeProperties(
     const value = buildValue(rawValue, titles);
     if (value !== undefined && value !== '') props[key] = value;
   }
-  return props;
+  return { properties: props, degraded: resolved === null };
 }
 
 /**
@@ -223,8 +233,11 @@ function splitMultiRefs(value: string): string[] | null {
   return matches.length >= 2 ? matches : null;
 }
 
-/** Batch-resolve entity ids to their `:block/title` in a single datascript query. */
-async function resolveRefTitles(ids: number[]): Promise<Map<number, string>> {
+/**
+ * Batch-resolve entity ids to their `:block/title` in a single datascript query.
+ * Returns `null` when the query throws, so callers can tell failure from "no titles".
+ */
+async function resolveRefTitles(ids: number[]): Promise<Map<number, string> | null> {
   const out = new Map<number, string>();
   if (ids.length === 0) return out;
   try {
@@ -243,6 +256,7 @@ async function resolveRefTitles(ids: number[]): Promise<Map<number, string>> {
     }
   } catch (err) {
     console.error('[Pretty Logseq] Failed to resolve v2 property references:', err);
+    return null;
   }
   return out;
 }

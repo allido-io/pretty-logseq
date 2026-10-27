@@ -364,6 +364,38 @@ describe('clearPageCacheV2', () => {
   });
 });
 
+describe('getPageV2 reference-query failures', () => {
+  beforeEach(() => {
+    clearPageCacheV2();
+    vi.mocked(logseq.DB.datascriptQuery).mockReset();
+  });
+
+  const entity = { name: 'p', title: 'P', ':user.property/owner-xEJFd0zo': 1927 };
+
+  it('does not cache a page whose reference query failed, so the next read retries', async () => {
+    partialMock(logseq.Editor.getPage).mockResolvedValue(entity);
+    vi.mocked(logseq.DB.datascriptQuery)
+      .mockRejectedValueOnce(new Error('transient'))
+      .mockResolvedValueOnce([[1927, '[[David Meents]]']]);
+
+    const first = await getPageV2('p');
+    const second = await getPageV2('p');
+
+    expect(first?.properties).toEqual({});
+    expect(second?.properties).toEqual({ owner: '[[David Meents]]' });
+  });
+
+  it('still caches a page when the query succeeds but resolves no titles', async () => {
+    partialMock(logseq.Editor.getPage).mockResolvedValue(entity);
+    vi.mocked(logseq.DB.datascriptQuery).mockResolvedValue([]);
+
+    await getPageV2('p');
+    await getPageV2('p');
+
+    expect(logseq.DB.datascriptQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('getPageBlocksV2', () => {
   it('maps the block tree (delegating to the shared mapper)', async () => {
     partialMock(logseq.Editor.getPageBlocksTree).mockResolvedValue([

@@ -102,21 +102,7 @@ export function setupLinkPopovers(): () => void {
     anchorLeaveCleanup = null;
   };
 
-  const handleEnter = (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const externalLink = target.closest?.('a.external-link') as HTMLAnchorElement | null;
-    if (!externalLink) return;
-
-    if (currentAnchor === externalLink && getPopover()) {
-      clearHideTimer();
-      return;
-    }
-
-    clearShowTimer();
-    clearHideTimer();
-    cleanupAnchorLeave();
-    currentAnchor = externalLink;
-
+  const armAnchorLeave = (anchor: HTMLAnchorElement) => {
     const onAnchorLeave = () => {
       clearShowTimer();
       if (getPopover()) {
@@ -126,8 +112,28 @@ export function setupLinkPopovers(): () => void {
       }
       anchorLeaveCleanup = null;
     };
-    externalLink.addEventListener('mouseleave', onAnchorLeave, { once: true });
-    anchorLeaveCleanup = () => externalLink.removeEventListener('mouseleave', onAnchorLeave);
+    anchor.addEventListener('mouseleave', onAnchorLeave, { once: true });
+    anchorLeaveCleanup = () => anchor.removeEventListener('mouseleave', onAnchorLeave);
+  };
+
+  const handleEnter = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const externalLink = target.closest?.('a.external-link') as HTMLAnchorElement | null;
+    if (!externalLink) return;
+
+    if (currentAnchor === externalLink && getPopover()) {
+      clearHideTimer();
+      // The one-shot leave listener is consumed once the pointer left; re-arm it
+      // so a second leave schedules the hide again.
+      if (!anchorLeaveCleanup) armAnchorLeave(externalLink);
+      return;
+    }
+
+    clearShowTimer();
+    clearHideTimer();
+    cleanupAnchorLeave();
+    currentAnchor = externalLink;
+    armAnchorLeave(externalLink);
 
     showTimer = setTimeout(() => {
       if (currentAnchor === externalLink) {

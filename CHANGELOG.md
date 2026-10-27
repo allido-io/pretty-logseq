@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.6](https://github.com/allido-io/pretty-logseq/compare/v2.0.5...v2.0.6) (2026-10-27)
+
+
+### Bug Fixes
+
+* **content:** decide the favorite-star write from the real favorites state ([#125](https://github.com/allido-io/pretty-logseq/issues/125)) ([f7898a1](https://github.com/allido-io/pretty-logseq/commit/f7898a13ab102c69e803e5f1b08dc6517f456170))
+* **core:** don't cache v2 pages when the property reference query fails ([#129](https://github.com/allido-io/pretty-logseq/issues/129)) ([a10f10d](https://github.com/allido-io/pretty-logseq/commit/a10f10d05c274719077dd20deb865b5076a91ad3))
+* **links:** close link popover after re-entering anchor within hide delay ([#128](https://github.com/allido-io/pretty-logseq/issues/128)) ([77ac419](https://github.com/allido-io/pretty-logseq/commit/77ac419df5de94531fa58e0c3adfb920a0d9a2da))
+* **popovers:** track which anchor owns the visible popover ([#130](https://github.com/allido-io/pretty-logseq/issues/130)) ([01cfd04](https://github.com/allido-io/pretty-logseq/commit/01cfd04e73732666cf910653a0c461f642e950bc))
+* **properties:** retry property icon lookup after a rejected page fetch ([#123](https://github.com/allido-io/pretty-logseq/issues/123)) ([8149e93](https://github.com/allido-io/pretty-logseq/commit/8149e939cba1c3312be849191d2307c4dacc4b61))
+* **properties:** skip property-icon lookups that resolve after the observer is torn down ([#124](https://github.com/allido-io/pretty-logseq/issues/124)) ([3865647](https://github.com/allido-io/pretty-logseq/commit/38656471552520a3c369d5881ab1e0658c4064cd))
+
 ## [2.0.5](https://github.com/allido-io/pretty-logseq/compare/v2.0.4...v2.0.5) (2026-10-26)
 
 

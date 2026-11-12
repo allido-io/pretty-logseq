@@ -1,6 +1,6 @@
 {
   "name": "pretty-logseq",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "A Logseq plugin for custom page preview popovers with rich property display",
   "main": "dist/index.html",
   "scripts": {

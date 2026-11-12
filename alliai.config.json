@@ -86,6 +86,7 @@
       "scripts/ci/**",
       ".claude/**",
       "CLAUDE.md",
+      "alliai.config.json",
       "package.json",
       "pnpm-lock.yaml",
       "manifest.json"

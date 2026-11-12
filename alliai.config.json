@@ -1,0 +1,234 @@
+{
+  "workItemPattern": "PRE-\\d+",
+  "ingest": {
+    "sources": {
+      "linear": {
+        "teamKeys": ["PRE"]
+      }
+    }
+  },
+  "linear": {
+    "team": {
+      "key": "PRE",
+      "name": "pretty-logseq"
+    },
+    "workspaceUrl": "https://linear.app/david-meents",
+    "labels": {
+      "type": ["Bug", "Feature", "Improvement", "Tech Debt"],
+      "area": {
+        "group": "Area",
+        "values": [
+          "popovers",
+          "links",
+          "properties",
+          "todos",
+          "content",
+          "styling",
+          "navigation",
+          "core",
+          "infra",
+          "tooling"
+        ]
+      },
+      "needsHumanReview": "Needs Human Review",
+      "source": {
+        "group": "Source",
+        "values": ["claude", "scout", "human", "sentry"]
+      },
+      "extraGroups": [
+        {
+          "group": "Edition",
+          "values": ["v1", "v2"]
+        }
+      ],
+      "forbiddenGroups": ["Domain"]
+    }
+  },
+  "checks": {
+    "setup": ["pnpm install --frozen-lockfile"],
+    "required": [
+      {
+        "name": "lint",
+        "command": "pnpm check:ci",
+        "ciJob": "Lint & Format"
+      },
+      {
+        "name": "typecheck",
+        "command": "pnpm typecheck",
+        "ciJob": "Lint & Format"
+      },
+      {
+        "name": "test",
+        "command": "pnpm test:coverage",
+        "ciJob": "Test"
+      },
+      {
+        "name": "build",
+        "command": "pnpm build",
+        "ciJob": "Build"
+      }
+    ],
+    "uncoveredPaths": ["**/*.md", ".github/**"],
+    "inner": "pnpm vitest run {files}",
+    "verify": {
+      "skill": "alliai:green"
+    },
+    "formatTouched": "pnpm exec biome check --write --no-errors-on-unmatched {files}",
+    "forbidden": ["pnpm check"]
+  },
+  "merge": {
+    "mode": "label",
+    "method": "squash",
+    "label": "ready-to-merge",
+    "branchPrefix": "claude/",
+    "humanPaths": [
+      ".github/**",
+      "scripts/ci/**",
+      ".claude/**",
+      "CLAUDE.md",
+      "package.json",
+      "pnpm-lock.yaml",
+      "manifest.json"
+    ],
+    "gateScript": "scripts/ci/check-gated.sh"
+  },
+  "pr": {
+    "titleFormat": "conventional"
+  },
+  "commits": {
+    "convention": "conventional"
+  },
+  "review": {
+    "bots": ["coderabbitai"]
+  },
+  "ci": {
+    "requiredChecks": ["Lint & Format", "Test", "Build"],
+    "nonGating": ["All Checks Passed", "CodeRabbit"]
+  },
+  "sensitiveSurfaces": [
+    {
+      "name": "CI workflows",
+      "globs": [".github/**"],
+      "why": "A workflow edit can make CI pass without testing anything. The release and auto-merge workflows live here too.",
+      "humanMerge": true,
+      "refactor": "read-only"
+    },
+    {
+      "name": "Merge gate",
+      "globs": ["scripts/ci/**"],
+      "why": "The gate script decides what may auto-merge. A PR must not loosen its own gate.",
+      "humanMerge": true,
+      "refactor": "read-only"
+    },
+    {
+      "name": "Dependencies",
+      "globs": ["package.json", "pnpm-lock.yaml"],
+      "why": "Dependencies, @logseq/libs included, are bundled into the plugin users install.",
+      "humanMerge": true,
+      "refactor": "read-only"
+    },
+    {
+      "name": "Marketplace manifest",
+      "globs": ["manifest.json"],
+      "why": "Marketplace listing metadata.",
+      "humanMerge": true,
+      "refactor": "read-only"
+    },
+    {
+      "name": "Agent instructions",
+      "globs": [".claude/**", "CLAUDE.md", "alliai.config.json"],
+      "why": "Agent instructions and settings. An agent does not merge changes to its own guardrails.",
+      "humanMerge": true,
+      "refactor": "read-only"
+    }
+  ],
+  "domains": [
+    {
+      "name": "popovers",
+      "globs": ["src/features/popovers/**"],
+      "area": "popovers"
+    },
+    {
+      "name": "links",
+      "globs": ["src/features/links/**"],
+      "area": "links"
+    },
+    {
+      "name": "properties",
+      "globs": ["src/features/properties/**"],
+      "area": "properties"
+    },
+    {
+      "name": "todos",
+      "globs": ["src/features/todos/**"],
+      "area": "todos"
+    },
+    {
+      "name": "content",
+      "globs": ["src/features/content/**"],
+      "area": "content"
+    },
+    {
+      "name": "styling",
+      "globs": ["src/features/{tables,tags,templates,typography}/**"],
+      "area": "styling"
+    },
+    {
+      "name": "navigation",
+      "globs": ["src/features/{topbar,sidebar,sidebar-tags}/**"],
+      "area": "navigation"
+    },
+    {
+      "name": "core",
+      "globs": ["src/*.ts", "src/core/**", "src/lib/**", "src/settings/**", "src/types/**"],
+      "area": "core"
+    },
+    {
+      "name": "infra",
+      "globs": [
+        ".github/**",
+        "scripts/**",
+        "test/**",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "biome.json",
+        "tsconfig*.json",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "manifest.json",
+        "index.html"
+      ],
+      "area": "infra"
+    },
+    {
+      "name": "tooling",
+      "globs": [".claude/**", "CLAUDE.md", ".mcp.json", "alliai.config.json"],
+      "area": "tooling",
+      "scan": false
+    }
+  ],
+  "worktree": {
+    "dir": ".claude/worktrees"
+  },
+  "ui": {
+    "paths": ["src/**"],
+    "verify": "manual"
+  },
+  "ticket": {
+    "codegraph": "ifPresent"
+  },
+  "scout": {
+    "types": ["Bug", "Feature", "Tech Debt", "Improvement"],
+    "sources": [
+      {
+        "type": "github-issues",
+        "repo": "allido-io/pretty-logseq"
+      }
+    ],
+    "priorityRubric": "Impact first: the plugin breaking Logseq (fails to load, blocks editing, damages the user's graph or config) > a feature visibly broken > degraded UX or a visual regression > internal debt > cosmetic. Then reach: both editions > one; on by default > an opt-in setting; open GitHub reports and their comments count. Effort only breaks ties. Urgent = the current release breaks Logseq for users or damages their graph; rare. High = a user-facing bug or security issue in the current release, or a blocker for active work. Medium = meaningful debt or improvement with real impact; the default for scoped work. Low = cosmetic, minor or low-churn debt, nice-to-have."
+  },
+  "groom": {
+    "contextDocs": ["README.md", "CLAUDE.md"],
+    "priorityRubric": "Impact first: the plugin breaking Logseq (fails to load, blocks editing, damages the user's graph or config) > a feature visibly broken > degraded UX or a visual regression > internal debt > cosmetic. Then reach: both editions > one; on by default > an opt-in setting; open GitHub reports and their comments count. Effort only breaks ties. Urgent = the current release breaks Logseq for users or damages their graph; rare. High = a user-facing bug or security issue in the current release, or a blocker for active work. Medium = meaningful debt or improvement with real impact; the default for scoped work. Low = cosmetic, minor or low-churn debt, nice-to-have."
+  }
+}

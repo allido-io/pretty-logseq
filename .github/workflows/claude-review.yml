@@ -1,0 +1,149 @@
+name: Claude review
+
+# The PR review the alliai merge gate waits on (review.bots: claude). Copied from the alliai plugin's
+# packages/plugin/templates/claude-review.yml; keep the copies in step, changing only runs-on.
+# Repo-specific rules live in .github/claude-review.md, which is read from the BASE branch so a PR
+# cannot loosen the rules it is reviewed under.
+#
+# How the alliai merge gate (packages/plugin/scripts/pr-review-state.mjs) reads this workflow:
+#   - The job's check run is `claude-review`. Only a `success` conclusion is a review. The last step
+#     fails the job when Claude posted no summary for this head (an error or a usage limit), so the
+#     gate prints review=skipped and the agent asks again with `pr-review-state.mjs rerequest <pr>`,
+#     which re-runs this workflow's newest run for the head. A run cancelled by a newer push
+#     belongs to an older head and does not count either.
+#   - Every finding is an inline review comment, so a review thread the agent must answer and
+#     resolve. A finding Claude cannot anchor to a changed line goes under "Outside diff range
+#     comments (N)" in the summary comment, which the gate's `reviews` lists for triage.
+#   - The review is advisory: it never approves or requests changes.
+#
+# Permissions: `--permission-mode default` makes --allowedTools a strict list. The action's own
+# default, auto mode, lets a safety review approve calls no rule covers, and the prompt has Claude
+# read text other people wrote (the PR description, earlier comments). Writes are limited to the
+# summary file. Keep both.
+#
+# Billing: CLAUDE_CODE_OAUTH_TOKEN is a `claude setup-token` token (valid one year), so runs use
+# the Claude subscription's usage, not API credits. The CLAUDE_REVIEW_MODEL variable (org or repo)
+# overrides the model. Dependabot PRs get no Actions secrets, so they are skipped.
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+# A newer push supersedes the review of the older head.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  claude-review:
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      !startsWith(github.head_ref, 'release-please--')
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+    steps:
+      - name: Check out the PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      # From the base branch, so the PR under review cannot rewrite its own rules. Falls back to
+      # the head's copy only when the base has none yet (the PR that adds the file).
+      - name: Load the review rules from the base branch
+        id: rules
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/contents/.github/claude-review.md?ref=$BASE_REF" --jq .content > "$RUNNER_TEMP/rules.b64" 2> "$RUNNER_TEMP/rules.err"; then
+            base64 -d "$RUNNER_TEMP/rules.b64" > "$RUNNER_TEMP/rules.md"
+          elif grep -qF 'HTTP 404' "$RUNNER_TEMP/rules.err"; then
+            if [ -f .github/claude-review.md ]; then
+              cp .github/claude-review.md "$RUNNER_TEMP/rules.md"
+            else
+              echo 'No repo-specific review rules.' > "$RUNNER_TEMP/rules.md"
+            fi
+          else
+            # A rate limit, network or server error must not swap in the PR's own rules. Fail, so
+            # a re-run reads the base again.
+            cat "$RUNNER_TEMP/rules.err" >&2
+            echo "::error::Could not read .github/claude-review.md from $BASE_REF."
+            exit 1
+          fi
+          delim="RULES_$(openssl rand -hex 8)"
+          { echo "text<<$delim"; cat "$RUNNER_TEMP/rules.md"; echo "$delim"; } >> "$GITHUB_OUTPUT"
+
+      - name: Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          # Post every inline comment Claude makes; the prompt keeps them to real findings.
+          classify_inline_comments: "false"
+          prompt: |
+            You are the code reviewer for pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            The PR head is ${{ github.event.pull_request.head.sha }}; it merges into ${{ github.event.pull_request.base.ref }}.
+            The working directory is a checkout of the PR head. The readers of your comments are mostly AI agents that must
+            fix or answer every comment before they can merge, so every comment costs work.
+
+            ## What to review
+            Review only what this PR changes: `gh pr diff ${{ github.event.pull_request.number }}`. Read the surrounding code,
+            callers and tests in the checkout (Read, Grep, Glob, git log/show) to confirm each finding before you report it.
+            `gh pr view ${{ github.event.pull_request.number }} --json title,body` gives the description (plain `gh pr view`
+            fails with this job's token), which names the ticket and its acceptance criteria; flag a change that
+            does not do what it claims.
+
+            Report only defects with a concrete failure scenario: correctness bugs, security problems, data loss or
+            integrity risks, broken contracts between modules, races, error handling that will fail in practice, tests
+            that would pass against the unfixed code, and docs that now state something false. No praise, no summaries
+            of the change, no style or formatting that linters enforce, no speculative "consider" remarks. A PR with
+            zero findings is a good outcome; never invent one to have something to say.
+
+            Earlier reviews: list the existing inline comments with
+            `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --paginate`.
+            Do not repeat a finding an earlier comment already raised, whether it was fixed, answered or dismissed with
+            a reason, unless this head reintroduced it or the reply is wrong on the evidence.
+
+            ## Repo-specific rules (from the base branch's .github/claude-review.md)
+            ${{ steps.rules.outputs.text }}
+
+            ## How to report
+            1. Each finding is ONE inline comment, posted with mcp__github_inline_comment__create_inline_comment on the
+               changed line (the RIGHT side of the diff) where it shows. If the root cause is outside the diff, anchor it
+               on the changed line that triggers it. Start the body with **Critical**, **Major** or **Minor**, then state
+               the defect, the failure scenario, and the fix.
+            2. Only a finding that no changed line can carry goes into the summary, under "### Outside diff range comments (N)".
+            3. Last, post exactly one summary comment: write it to .claude-review-summary.md in the working directory and
+               run `gh pr comment ${{ github.event.pull_request.number }} --body-file .claude-review-summary.md`.
+               Its first line must be exactly:
+               <!-- claude-review sha=${{ github.event.pull_request.head.sha }} -->
+               Then a `## Claude review` heading, one line with the verdict and the number of inline findings by
+               severity, and the "### Outside diff range comments (N)" section only when it has items.
+               The review counts only once this comment is posted, so post it even when there are no findings.
+            Never approve, request changes, edit tracked files, commit or push.
+          claude_args: >-
+            --model ${{ vars.CLAUDE_REVIEW_MODEL || 'claude-opus-5-5' }}
+            --permission-mode default
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Read,Grep,Glob,Edit(./.claude-review-summary.md),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment ${{ github.event.pull_request.number }} --body-file .claude-review-summary.md),Bash(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*)"
+
+      - name: Require the review summary for this head
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' \
+            | grep -F "<!-- claude-review sha=$HEAD_SHA -->" > /dev/null; then
+            echo "Claude review posted for $HEAD_SHA."
+          else
+            echo "::error::The Claude review posted no summary for $HEAD_SHA (an error or a usage limit). Ask again with pr-review-state.mjs rerequest $PR, or re-run this job."
+            exit 1
+          fi

@@ -100,7 +100,7 @@
     "convention": "conventional"
   },
   "review": {
-    "bots": ["coderabbitai"]
+    "bots": ["claude"]
   },
   "ci": {
     "requiredChecks": ["Lint & Format", "Test", "Build"],

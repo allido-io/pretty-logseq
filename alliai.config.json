@@ -100,11 +100,11 @@
     "convention": "conventional"
   },
   "review": {
-    "bots": ["coderabbitai"]
+    "bots": ["claude"]
   },
   "ci": {
     "requiredChecks": ["Lint & Format", "Test", "Build"],
-    "nonGating": ["All Checks Passed", "CodeRabbit"]
+    "nonGating": ["All Checks Passed"]
   },
   "sensitiveSurfaces": [
     {

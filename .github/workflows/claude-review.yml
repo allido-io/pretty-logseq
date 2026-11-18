@@ -100,8 +100,9 @@ jobs:
             ## What to review
             Review only what this PR changes: `gh pr diff ${{ github.event.pull_request.number }}`. Read the surrounding code,
             callers and tests in the checkout (Read, Grep, Glob, git log/show) to confirm each finding before you report it.
-            `gh pr view ${{ github.event.pull_request.number }}` gives the description, which names the ticket and its
-            acceptance criteria; flag a change that does not do what it claims.
+            `gh pr view ${{ github.event.pull_request.number }} --json title,body` gives the description (plain `gh pr view`
+            fails with this job's token), which names the ticket and its acceptance criteria; flag a change that
+            does not do what it claims.
 
             Report only defects with a concrete failure scenario: correctness bugs, security problems, data loss or
             integrity risks, broken contracts between modules, races, error handling that will fail in practice, tests

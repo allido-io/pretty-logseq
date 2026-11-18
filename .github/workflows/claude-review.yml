@@ -1,6 +1,6 @@
 name: Claude review
 
-# The PR reviewer for this repo (it replaced CodeRabbit). Copied from the alliai plugin's
+# The PR review the alliai merge gate waits on (review.bots: claude). Copied from the alliai plugin's
 # packages/plugin/templates/claude-review.yml; keep the copies in step, changing only runs-on.
 # Repo-specific rules live in .github/claude-review.md, which is read from the BASE branch so a PR
 # cannot loosen the rules it is reviewed under.

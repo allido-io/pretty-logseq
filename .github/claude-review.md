@@ -1,9 +1,10 @@
 # Review instructions for pretty-logseq
 
 The Claude review (`.github/workflows/claude-review.yml`) reads this file from the base branch
-and adds it to its prompt, so a PR cannot change the instructions it is reviewed under. It
-replaced CodeRabbit. When a false-positive class keeps coming back, add a rule here instead of
-answering it again on every PR.
+and adds it to its prompt, so a PR cannot change the instructions it is reviewed under. CodeRabbit
+still reviews alongside it for now, on its defaults (this repo has no `.coderabbit.yaml`). When
+a false-positive class keeps coming back, add a rule here instead of answering it again on every
+PR.
 
 ## Tone
 
